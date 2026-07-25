@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { generateOutfitCopy, isGroqConfigured } from '@/lib/groq'
 import { majorCategoryLabel, personalColorLabel, situationLabel } from '@/lib/labels'
-import { recommendCoordinate, type RecommendResult } from '@/services/recommend'
+import { recommendCoordinates, type RecommendResult } from '@/services/recommend'
 import type { ClothingItem, Situation, UserProfile, WeatherSnapshot } from '@/types'
 
 interface UseOutfitRecommendationInput {
@@ -15,24 +15,33 @@ interface UseOutfitRecommendationInput {
 }
 
 /**
- * 규칙 기반 추천(recommendCoordinate)을 먼저 즉시 계산해 렌더링하고,
- * 백그라운드에서 Groq에게 reason/mascotComment 문구만 자연스럽게 다시 쓰게 한다.
- * 점수 계산(breakdown)은 항상 규칙 기반 결과 그대로 — AI는 문구만 담당한다.
- * AI 호출이 느리거나 실패해도 규칙 기반 문구가 이미 화면에 떠 있어 어색한 공백이 없다.
+ * 규칙 기반 추천(recommendCoordinates)으로 코디 후보 3개를 즉시 계산해 렌더링하고,
+ * 백그라운드에서 Groq에게 **선택된 후보의** reason/mascotComment 문구만 자연스럽게
+ * 다시 쓰게 한다. 점수 계산(breakdown)은 항상 규칙 기반 결과 그대로 — AI는 문구만
+ * 담당한다. 후보 3개 전부에 AI 호출을 하면 비용이 3배가 되니 선택된 것만 보강한다.
  */
 export function useOutfitRecommendation(input: UseOutfitRecommendationInput) {
   const { closet, profile, weather, situation, closetOnly, reshuffle } = input
 
-  const base = useMemo<RecommendResult | null>(() => {
-    if (!profile) return null
+  const bases = useMemo<RecommendResult[]>(() => {
+    if (!profile) return []
     const excludeItemIds = closet
       .slice()
       .sort((a, b) => b.wearCount - a.wearCount)
       .slice(0, reshuffle)
       .map((item) => item.id)
 
-    return recommendCoordinate({ closet, profile, weather, situation, closetOnly, excludeItemIds })
+    return recommendCoordinates({ closet, profile, weather, situation, closetOnly, excludeItemIds })
   }, [closet, profile, weather, situation, closetOnly, reshuffle])
+
+  const [selectedIndex, setSelectedIndex] = useState(0)
+
+  // 후보가 새로 계산되면(TPO 변경·다시 추천 등) 항상 첫 번째 후보부터 다시 보여준다.
+  useEffect(() => {
+    setSelectedIndex(0)
+  }, [bases])
+
+  const base = bases[selectedIndex] ?? null
 
   const [aiCopy, setAiCopy] = useState<{
     coordinateId: string
@@ -78,6 +87,11 @@ export function useOutfitRecommendation(input: UseOutfitRecommendationInput) {
   }, [base, aiCopy])
 
   return {
+    /** 선택 가능한 코디 후보 전체 (보통 3개) */
+    coordinates: bases.map((b) => b.coordinate),
+    selectedIndex,
+    selectCoordinate: setSelectedIndex,
+    /** 현재 선택된 후보 — AI 문구 보강 적용 */
     coordinate,
     breakdown: base?.breakdown ?? [],
     filledByBrand: base?.filledByBrand ?? [],

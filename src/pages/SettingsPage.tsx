@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Chip } from '@/components/ui/Chip'
-import { useAppData } from '@/hooks/useAppData'
 import { useAuth } from '@/hooks/useAuth'
 import { genderLabel } from '@/lib/labels'
 import { GENDERS, type Gender } from '@/types'
@@ -11,7 +10,6 @@ import { GENDERS, type Gender } from '@/types'
 export function SettingsPage() {
   const { user, usingMockAuth, emailVerified, updateProfile, resendVerificationEmail, signOut } =
     useAuth()
-  const { remainingRecommendations } = useAppData()
   const navigate = useNavigate()
 
   const [nickname, setNickname] = useState(user?.nickname ?? '')
@@ -122,10 +120,6 @@ export function SettingsPage() {
           )}
         </Card>
       )}
-
-      <Card className="tf-reveal" icon="✨" title="이용 현황">
-        <p className="tf-caption">오늘 남은 무료 추천 {remainingRecommendations}회</p>
-      </Card>
 
       <Card className="tf-reveal" icon="🚪" title="로그아웃">
         <p className="tf-caption">다른 계정으로 다시 로그인할 수 있어요.</p>

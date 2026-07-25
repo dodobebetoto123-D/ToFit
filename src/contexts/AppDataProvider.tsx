@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { isFirebaseConfigured } from '@/lib/firebase'
-import { toISODate } from '@/lib/utils'
 import {
   addClothingItemDoc,
   markItemsWorn,
@@ -27,26 +26,6 @@ import { computeActivityScore, syncPublicProfileStats } from '@/services/firesto
 import type { ClothingItem, CommunityPost, Coordinate, OutfitFeedback, SavedOutfit } from '@/types'
 import { AppDataContext, type AppDataContextValue } from './app-data-context'
 
-/** 무료 사용자 하루 추천 한도 (Lean Canvas 수익 모델) */
-const DAILY_FREE_LIMIT = 2
-const QUOTA_KEY = 'tofit.quota'
-
-interface QuotaState {
-  date: string
-  used: number
-}
-
-function readStoredQuota(): QuotaState {
-  const today = toISODate(new Date())
-  try {
-    const raw = localStorage.getItem(QUOTA_KEY)
-    const stored = raw ? (JSON.parse(raw) as QuotaState) : { date: today, used: 0 }
-    return stored.date === today ? stored : { date: today, used: 0 }
-  } catch {
-    return { date: today, used: 0 }
-  }
-}
-
 export function AppDataProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const uid = user?.id ?? null
@@ -57,9 +36,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [feedbacks, setFeedbacks] = useState<OutfitFeedback[]>([])
   const [posts, setPosts] = useState<CommunityPost[]>([])
   const [postsLoading, setPostsLoading] = useState(true)
-  const [quota, setQuota] = useState<QuotaState>(readStoredQuota)
-
-  useEffect(() => localStorage.setItem(QUOTA_KEY, JSON.stringify(quota)), [quota])
 
   /* ── Firestore 구독 ───────────────────────────────────────── */
 
@@ -227,22 +203,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     void deletePostDoc(postId)
   }, [])
 
-  /* ── 추천 횟수 제한 ───────────────────────────────────────── */
-
-  const consumeRecommendation = useCallback(() => {
-    const today = toISODate(new Date())
-    let allowed = false
-    setQuota((prev) => {
-      const base = prev.date === today ? prev : { date: today, used: 0 }
-      if (base.used >= DAILY_FREE_LIMIT) return base
-      allowed = true
-      return { date: today, used: base.used + 1 }
-    })
-    return allowed
-  }, [])
-
-  const remainingRecommendations = Math.max(0, DAILY_FREE_LIMIT - quota.used)
-
   const value = useMemo<AppDataContextValue>(
     () => ({
       closet,
@@ -263,8 +223,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       createPost,
       toggleLike,
       deletePost,
-      remainingRecommendations,
-      consumeRecommendation,
     }),
     [
       closet,
@@ -285,8 +243,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       createPost,
       toggleLike,
       deletePost,
-      remainingRecommendations,
-      consumeRecommendation,
     ],
   )
 

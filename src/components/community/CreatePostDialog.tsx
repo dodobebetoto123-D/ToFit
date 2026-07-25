@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Chip } from '@/components/ui/Chip'
 import { Icon } from '@/components/ui/Icon'
-import { OUTFIT_PHOTO_THEMES, type CommunityPost, type OutfitPhotoTheme } from '@/types'
+import { fileToVisionDataUrl } from '@/lib/image'
+import { OUTFIT_PHOTO_THEMES, type CommunityPost, type OutfitPhotoTheme, type SavedOutfit } from '@/types'
 import { PostPhoto } from './PostPhoto'
 
 const THEME_LABEL: Record<OutfitPhotoTheme, string> = {
@@ -20,12 +21,14 @@ interface CreatePostDialogProps {
   onSubmit: (
     post: Omit<
       CommunityPost,
-      'id' | 'likedBy' | 'likeCount' | 'commentCount' | 'viewCount' | 'liked' | 'createdAt'
+      'id' | 'likedBy' | 'likeCount' | 'commentCount' | 'viewedBy' | 'viewCount' | 'liked' | 'createdAt'
     >,
   ) => void
   authorId: string
   authorNickname: string
   authorAvatarColor: string
+  /** 첨부할 수 있는 내가 저장한 코디 목록 — 옷 정보를 게시글에 붙일 때 쓴다 */
+  savedOutfits: SavedOutfit[]
 }
 
 export function CreatePostDialog({
@@ -35,12 +38,16 @@ export function CreatePostDialog({
   authorId,
   authorNickname,
   authorAvatarColor,
+  savedOutfits,
 }: CreatePostDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [hashtagsInput, setHashtagsInput] = useState('')
   const [theme, setTheme] = useState<OutfitPhotoTheme>('CASUAL_INDOOR')
+  const [photoUrl, setPhotoUrl] = useState<string | undefined>(undefined)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [selectedOutfitId, setSelectedOutfitId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -49,6 +56,18 @@ export function CreatePostDialog({
     if (open && !dialog.open) dialog.showModal()
     if (!open && dialog.open) dialog.close()
   }, [open])
+
+  async function handlePhoto(file: File) {
+    setUploadingPhoto(true)
+    try {
+      const dataUrl = await fileToVisionDataUrl(file, 720)
+      setPhotoUrl(dataUrl)
+    } catch {
+      setError('사진을 불러오지 못했어요. 다시 시도해 주세요.')
+    } finally {
+      setUploadingPhoto(false)
+    }
+  }
 
   function handleSubmit() {
     if (!title.trim() || !content.trim()) {
@@ -62,6 +81,8 @@ export function CreatePostDialog({
       .map((tag) => tag.trim())
       .filter(Boolean)
 
+    const selectedOutfit = savedOutfits.find((outfit) => outfit.id === selectedOutfitId)
+
     onSubmit({
       authorId,
       authorNickname,
@@ -70,11 +91,15 @@ export function CreatePostDialog({
       content: content.trim(),
       hashtags,
       outfitPhotoTheme: theme,
+      photoUrl,
+      outfitSlots: selectedOutfit?.coordinate.slots,
     })
 
     setTitle('')
     setContent('')
     setHashtagsInput('')
+    setPhotoUrl(undefined)
+    setSelectedOutfitId(null)
     onClose()
   }
 
@@ -89,19 +114,73 @@ export function CreatePostDialog({
 
       <div className="tf-dialog__body">
         <div className="tf-createpost__preview">
-          <PostPhoto theme={theme} />
+          {photoUrl ? (
+            <img src={photoUrl} alt="업로드한 착장 사진" className="tf-createpost__photo" />
+          ) : (
+            <PostPhoto theme={theme} />
+          )}
         </div>
 
         <fieldset className="tf-field">
-          <legend>사진 테마 (실제 업로드는 추후 지원)</legend>
-          <div className="tf-chipset">
-            {OUTFIT_PHOTO_THEMES.map((value) => (
-              <Chip key={value} size="sm" selected={theme === value} onClick={() => setTheme(value)}>
-                {THEME_LABEL[value]}
-              </Chip>
-            ))}
-          </div>
+          <legend>착장 사진</legend>
+          <label className="tf-uploader">
+            <Icon name="camera" size={18} />
+            <span>{uploadingPhoto ? '사진을 불러오는 중...' : '사진 업로드'}</span>
+            <input
+              type="file"
+              accept="image/*"
+              className="tf-sr-only"
+              onChange={(event) => {
+                const file = event.target.files?.[0]
+                if (file) void handlePhoto(file)
+              }}
+            />
+          </label>
+          {photoUrl && (
+            <button
+              type="button"
+              className="tf-textlink"
+              onClick={() => setPhotoUrl(undefined)}
+            >
+              사진 제거하고 테마로 돌아가기
+            </button>
+          )}
         </fieldset>
+
+        {!photoUrl && (
+          <fieldset className="tf-field">
+            <legend>사진 테마 (사진을 안 올리면 이 일러스트로 대체돼요)</legend>
+            <div className="tf-chipset">
+              {OUTFIT_PHOTO_THEMES.map((value) => (
+                <Chip key={value} size="sm" selected={theme === value} onClick={() => setTheme(value)}>
+                  {THEME_LABEL[value]}
+                </Chip>
+              ))}
+            </div>
+          </fieldset>
+        )}
+
+        {savedOutfits.length > 0 && (
+          <fieldset className="tf-field">
+            <legend>옷 정보 첨부 (선택)</legend>
+            <div className="tf-chipset tf-chipset--wrap">
+              <Chip size="sm" selected={selectedOutfitId === null} onClick={() => setSelectedOutfitId(null)}>
+                첨부 안 함
+              </Chip>
+              {savedOutfits.map((outfit) => (
+                <Chip
+                  key={outfit.id}
+                  size="sm"
+                  selected={selectedOutfitId === outfit.id}
+                  onClick={() => setSelectedOutfitId(outfit.id)}
+                >
+                  {outfit.coordinate.styleName}
+                </Chip>
+              ))}
+            </div>
+            <p className="tf-micro">첨부하면 게시글에서 브랜드·색상 등 옷 정보를 볼 수 있어요.</p>
+          </fieldset>
+        )}
 
         <label className="tf-field">
           <span>제목 *</span>

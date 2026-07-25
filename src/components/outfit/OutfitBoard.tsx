@@ -17,11 +17,19 @@ function SlotBadge({ slot }: { slot: CoordinateSlot }) {
   )
 }
 
+function SlotArt({ slot }: { slot: CoordinateSlot }) {
+  return slot.photoUrl ? (
+    <img src={slot.photoUrl} alt={slot.name} className="tf-slot__photo" />
+  ) : (
+    <GarmentGlyph category={slot.minorCategory} color={slot.color} />
+  )
+}
+
 function HeroSlot({ slot }: { slot: CoordinateSlot }) {
   return (
     <figure className="tf-slot tf-slot--hero">
       <div className="tf-slot__art">
-        <GarmentGlyph category={slot.minorCategory} color={slot.color} />
+        <SlotArt slot={slot} />
       </div>
       <figcaption className="tf-slot__caption">
         <span className="tf-slot__name tf-truncate">{slot.name}</span>
@@ -35,7 +43,7 @@ function SideSlot({ slot }: { slot: CoordinateSlot }) {
   return (
     <figure className="tf-slot tf-slot--side">
       <div className="tf-slot__art">
-        <GarmentGlyph category={slot.minorCategory} color={slot.color} />
+        <SlotArt slot={slot} />
       </div>
       <figcaption className="tf-slot__caption tf-slot__caption--stack">
         <span className="tf-slot__brand tf-truncate">{slot.brand}</span>

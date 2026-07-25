@@ -26,7 +26,11 @@ export function ClothingCard({
         onClick={() => onSelect?.(item)}
         aria-label={`${item.name} 자세히 보기`}
       >
-        <GarmentGlyph category={item.minorCategory} color={item.color} />
+        {item.photoUrl ? (
+          <img src={item.photoUrl} alt={item.name} className="tf-clothcard__photo" />
+        ) : (
+          <GarmentGlyph category={item.minorCategory} color={item.color} />
+        )}
         {item.wearCount > 0 && (
           <span className="tf-clothcard__wear">{item.wearCount}회</span>
         )}

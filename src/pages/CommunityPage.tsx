@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { AdFitBanner } from '@/components/ads/AdFitBanner'
 import { CreatePostDialog } from '@/components/community/CreatePostDialog'
 import { PostCard } from '@/components/community/PostCard'
 import { PostDetailModal } from '@/components/community/PostDetailModal'
@@ -26,7 +27,7 @@ const SORTS: ReadonlyArray<SegmentedOption<SortKey>> = [
 
 export function CommunityPage() {
   const { user } = useAuth()
-  const { posts, postsLoading, toggleLike, createPost, deletePost } = useAppData()
+  const { posts, postsLoading, toggleLike, createPost, deletePost, savedOutfits } = useAppData()
   const { twins, loading: twinsLoading, toggleFollow } = useStyleTwins()
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -140,6 +141,8 @@ export function CommunityPage() {
               ))}
             </div>
           )}
+
+          <AdFitBanner width={728} height={90} className="tf-reveal" />
         </div>
 
         {/* ── 스타일 트윈 ─────────────────────────────────── */}
@@ -190,6 +193,7 @@ export function CommunityPage() {
           authorId={user.id}
           authorNickname={user.nickname}
           authorAvatarColor={avatarColorForUid(user.id)}
+          savedOutfits={savedOutfits}
         />
       )}
 

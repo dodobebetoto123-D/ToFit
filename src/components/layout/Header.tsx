@@ -46,11 +46,6 @@ export function Header() {
           />
         </form>
 
-        <button type="button" className="tf-icon-btn" aria-label="알림 3건">
-          <Icon name="bell" size={19} />
-          <span className="tf-icon-btn__dot">3</span>
-        </button>
-
         <div className="tf-header__user">
           <button
             type="button"

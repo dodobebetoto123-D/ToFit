@@ -170,8 +170,9 @@ async function ensureAccount(seed, index) {
     outfitPhotoTheme: seed.post.outfitPhotoTheme,
     likedBy: [],
     likeCount: 0,
-    commentCount: Math.floor(Math.random() * 15) + 3,
-    viewCount: Math.floor(Math.random() * 2000) + 500,
+    commentCount: 0,
+    viewedBy: [],
+    viewCount: 0,
     createdAt: new Date(Date.now() - index * 86400_000).toISOString(),
   })
 

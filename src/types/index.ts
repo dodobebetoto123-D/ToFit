@@ -206,6 +206,8 @@ export interface CoordinateSlot {
   discountRate?: number
   /** 브랜드+상품명으로 연결되는 실제 검색결과 페이지 (무신사) */
   searchUrl?: string
+  /** 내 옷장 아이템에 실제 사진이 있으면 여기 담긴다 — 없으면 일러스트로 대체한다 */
+  photoUrl?: string
   source: 'CLOSET' | 'BRAND'
 }
 
@@ -269,10 +271,17 @@ export interface CommunityPost {
   content: string
   hashtags: string[]
   outfitPhotoTheme: OutfitPhotoTheme
+  /** 실제로 업로드한 착장 사진 (있으면 테마 일러스트 대신 이걸 보여준다) */
+  photoUrl?: string
+  /** 글쓴이가 저장한 코디를 첨부한 경우의 스냅샷 — 게시글 상세에서 옷 정보로 노출 */
+  outfitSlots?: CoordinateSlot[]
   /** Firestore에 저장되는 원본 — 좋아요 누른 사용자 uid 목록 */
   likedBy: string[]
   likeCount: number
   commentCount: number
+  /** 조회한 사용자 uid 목록 — 중복 조회를 걸러 "진짜" 유니크 조회수만 남긴다 */
+  viewedBy: string[]
+  /** @deprecated viewedBy.length를 쓴다. 예전 버그(중복 카운트)로 오염된 필드라 더는 읽지 않는다 */
   viewCount: number
   /** 현재 로그인한 사용자 기준 파생값 (likedBy.includes(내 uid)) — Firestore에 저장하지 않는다 */
   liked: boolean

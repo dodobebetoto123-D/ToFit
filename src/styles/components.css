@@ -541,6 +541,13 @@
   background: var(--tf-surface);
   border-radius: var(--tf-r-md);
   padding: var(--tf-sp-2);
+  overflow: hidden;
+}
+.tf-addform__photo-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--tf-r-sm, 8px);
 }
 .tf-addform__photo {
   display: flex;
@@ -631,6 +638,13 @@
 .tf-clothcard--compact .tf-clothcard__thumb {
   padding: var(--tf-sp-2);
 }
+.tf-clothcard__photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--tf-r-sm, 8px);
+  display: block;
+}
 .tf-clothcard__wear {
   position: absolute;
   bottom: 6px;
@@ -708,6 +722,14 @@
   padding: var(--tf-sp-3);
   aspect-ratio: 4 / 4.4;
   transition: var(--tf-t-hover);
+  overflow: hidden;
+}
+.tf-slot__photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--tf-r-sm, 8px);
+  display: block;
 }
 .tf-slot--hero .tf-slot__art:hover {
   background: var(--tf-primary-50);
@@ -795,6 +817,12 @@
   height: 100%;
   display: block;
 }
+.tf-postcard__photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
 .tf-createpost__preview {
   width: 160px;
   aspect-ratio: 5 / 6;
@@ -802,6 +830,12 @@
   border-radius: var(--tf-r-md);
   overflow: hidden;
   background: var(--tf-surface);
+}
+.tf-createpost__photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 .tf-postcard__body {
   padding: var(--tf-sp-3);
@@ -870,6 +904,37 @@
   border-radius: var(--tf-r-md);
   overflow: hidden;
   margin: 0 auto;
+}
+.tf-postdetail__photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.tf-outfititems {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tf-sp-2);
+}
+.tf-outfititem {
+  display: flex;
+  align-items: center;
+  gap: var(--tf-sp-3);
+  padding: var(--tf-sp-2) 0;
+  border-bottom: 1px solid var(--tf-line);
+}
+.tf-outfititem:last-child {
+  border-bottom: none;
+}
+.tf-outfititem__swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--tf-r-sm, 6px);
+  flex-shrink: 0;
+}
+.tf-outfititem__name {
+  font-weight: 700;
+  font-size: var(--tf-fs-caption);
 }
 .tf-postdetail__author {
   display: flex;

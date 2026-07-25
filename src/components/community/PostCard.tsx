@@ -19,7 +19,11 @@ export function PostCard({ post, onToggleLike, onOpen }: PostCardProps) {
         onClick={() => onOpen?.(post)}
         aria-label={`${post.title} 게시글 열기`}
       >
-        <PostPhoto theme={post.outfitPhotoTheme} />
+        {post.photoUrl ? (
+          <img src={post.photoUrl} alt={post.title} className="tf-postcard__photo" />
+        ) : (
+          <PostPhoto theme={post.outfitPhotoTheme} />
+        )}
       </button>
 
       <div className="tf-postcard__body">

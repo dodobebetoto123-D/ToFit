@@ -76,7 +76,10 @@ export function subscribePopularPosts(
 }
 
 export async function createPostDoc(
-  post: Omit<CommunityPost, 'id' | 'likedBy' | 'likeCount' | 'commentCount' | 'viewCount' | 'liked' | 'createdAt'>,
+  post: Omit<
+    CommunityPost,
+    'id' | 'likedBy' | 'likeCount' | 'commentCount' | 'viewedBy' | 'viewCount' | 'liked' | 'createdAt'
+  >,
 ): Promise<void> {
   const id = createId('post')
   const full: RawPost = {
@@ -85,6 +88,7 @@ export async function createPostDoc(
     likedBy: [],
     likeCount: 0,
     commentCount: 0,
+    viewedBy: [],
     viewCount: 0,
     createdAt: new Date().toISOString(),
   }
@@ -102,8 +106,9 @@ export async function deletePostDoc(postId: string): Promise<void> {
   await deleteDoc(doc(postsCollection(), postId))
 }
 
-export async function incrementPostViewCount(postId: string): Promise<void> {
-  await updateDoc(doc(postsCollection(), postId), { viewCount: increment(1) })
+/** 같은 사용자가 여러 번 열어도 유니크 조회수는 한 번만 오른다 */
+export async function incrementPostViewCount(postId: string, uid: string): Promise<void> {
+  await updateDoc(doc(postsCollection(), postId), { viewedBy: arrayUnion(uid) })
 }
 
 /* ─────────────────────────────────────────────────────────────

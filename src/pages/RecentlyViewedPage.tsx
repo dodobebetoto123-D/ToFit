@@ -66,8 +66,8 @@ export function RecentlyViewedPage() {
                   <p className="tf-micro">{item.brand}</p>
                   <p className="tf-brandrow__name">{item.name}</p>
                   <p className="tf-caption">
-                    {majorCategoryLabel[item.majorCategory]} · {minorCategoryLabel[item.minorCategory]}{' '}
-                    · {fromNow(item.viewedAt)} 조회
+                    {item.colorName} · {majorCategoryLabel[item.majorCategory]} ·{' '}
+                    {minorCategoryLabel[item.minorCategory]} · {fromNow(item.viewedAt)} 조회
                   </p>
                 </div>
                 {item.price !== undefined && (

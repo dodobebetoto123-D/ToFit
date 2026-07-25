@@ -24,15 +24,7 @@ import { FEEDBACK_TAGS, SITUATIONS, type CoordinateSlot, type FeedbackTag, type 
 
 export function RecommendPage() {
   const { user } = useAuth()
-  const {
-    closet,
-    saveOutfit,
-    isSaved,
-    markCoordinateWorn,
-    addFeedback,
-    remainingRecommendations,
-    consumeRecommendation,
-  } = useAppData()
+  const { closet, saveOutfit, isSaved, markCoordinateWorn, addFeedback } = useAppData()
   const { weather, isEstimate: weatherIsEstimate } = useWeather()
 
   const [situation, setSituation] = useState<Situation>('DAILY')
@@ -44,14 +36,15 @@ export function RecommendPage() {
   const [feedbackTags, setFeedbackTags] = useState<FeedbackTag[]>([])
   const [feedbackDone, setFeedbackDone] = useState(false)
 
-  const { coordinate, breakdown, filledByBrand, aiEnhancing } = useOutfitRecommendation({
-    closet,
-    profile: user,
-    weather,
-    situation,
-    closetOnly,
-    reshuffle,
-  })
+  const { coordinates, selectedIndex, selectCoordinate, coordinate, breakdown, filledByBrand, aiEnhancing } =
+    useOutfitRecommendation({
+      closet,
+      profile: user,
+      weather,
+      situation,
+      closetOnly,
+      reshuffle,
+    })
 
   if (!user || !coordinate) {
     return (
@@ -64,15 +57,20 @@ export function RecommendPage() {
   const brandSlots = coordinate.slots.filter((slot) => slot.source === 'BRAND')
 
   function handleReshuffle() {
-    if (!consumeRecommendation()) {
-      setNotice('오늘 무료 추천 2회를 다 썼어요. 광고 보기 또는 프리미엄으로 계속할 수 있어요.')
-      return
-    }
     setNotice(null)
     setFeedbackDone(false)
     setRating(0)
     setFeedbackTags([])
     setReshuffle((count) => count + 1)
+  }
+
+  function handleSelectCoordinate(index: number) {
+    selectCoordinate(index)
+    setNotice(null)
+    setFeedbackDone(false)
+    setRating(0)
+    setFeedbackTags([])
+    setShowReason(false)
   }
 
   function submitFeedback() {
@@ -107,9 +105,6 @@ export function RecommendPage() {
             {weatherIsEstimate && ' — 실시간 조회가 안 돼 추정치를 보여드려요'}
           </p>
         </div>
-        <Chip readOnly tone="cool">
-          오늘 남은 무료 추천 {remainingRecommendations}회
-        </Chip>
       </header>
 
       {/* ── TPO 선택 ──────────────────────────────────────── */}
@@ -170,6 +165,23 @@ export function RecommendPage() {
           </Chip>
         }
       >
+        {coordinates.length > 1 && (
+          <div className="tf-stylepicker" role="tablist" aria-label="코디 후보">
+            {coordinates.map((candidate, index) => (
+              <button
+                key={candidate.id}
+                type="button"
+                role="tab"
+                aria-selected={selectedIndex === index}
+                className={cn('tf-stylepicker__tab', selectedIndex === index && 'is-selected')}
+                onClick={() => handleSelectCoordinate(index)}
+              >
+                스타일 {index + 1}
+              </button>
+            ))}
+          </div>
+        )}
+
         <OutfitBoard coordinate={coordinate} />
 
         <MascotBubble message={coordinate.mascotComment} />
@@ -280,7 +292,7 @@ export function RecommendPage() {
                   <p className="tf-micro">{slot.brand}</p>
                   <p className="tf-brandrow__name">{slot.name}</p>
                   <p className="tf-caption">
-                    {majorCategoryLabel[slot.majorCategory]} ·{' '}
+                    {slot.colorName} · {majorCategoryLabel[slot.majorCategory]} ·{' '}
                     {minorCategoryLabel[slot.minorCategory]} · 보유한 아이템과 잘 어울려요
                   </p>
                 </div>

@@ -61,6 +61,7 @@ export function AddClothingDialog({ open, userId, onClose, onSubmit }: AddClothi
   const [seasons, setSeasons] = useState<Season[]>(['SPRING', 'AUTUMN'])
   const [style, setStyle] = useState<StyleTag>('CASUAL')
   const [price, setPrice] = useState('')
+  const [photoUrl, setPhotoUrl] = useState<string | undefined>(undefined)
   const [photoHint, setPhotoHint] = useState<string | null>(null)
   const [aiAnalyzing, setAiAnalyzing] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -88,22 +89,30 @@ export function AddClothingDialog({ open, userId, onClose, onSubmit }: AddClothi
   }
 
   async function handlePhoto(file: File) {
+    // 압축된 데이터 URL을 실제 사진으로도 저장한다 — 옷장·코디보드에서 일러스트 대신 이 사진을 보여준다.
+    let dataUrl: string | undefined
+    try {
+      dataUrl = await fileToVisionDataUrl(file)
+      setPhotoUrl(dataUrl)
+    } catch {
+      // 압축 실패해도 아래 색상 추출·수동 입력은 그대로 진행한다.
+    }
+
     // 즉시 미리보기용 — 캔버스 기반 평균색은 네트워크 없이 바로 나온다.
     try {
       const dominant = await extractDominantColor(file)
       setColor(dominant)
       setColorName(nearestColorName(dominant))
-      setPhotoHint(`사진에서 ${nearestColorName(dominant)} 계열을 찾았어요. 나머지만 확인해 주세요.`)
+      setPhotoHint(`사진에서 ${nearestColorName(dominant)} 계열을 찾았어요. 이대로 바로 추가해도 돼요.`)
     } catch {
       setPhotoHint('사진에서 색을 읽지 못했어요. 아래에서 직접 골라 주세요.')
     }
 
-    if (!isGroqConfigured) return
+    if (!isGroqConfigured || !dataUrl) return
 
     // Vision AI로 카테고리·소재까지 보강 — 실패해도 위 캔버스 결과가 그대로 남는다.
     setAiAnalyzing(true)
     try {
-      const dataUrl = await fileToVisionDataUrl(file)
       const result = await classifyClothingPhoto(dataUrl)
       if (result) {
         if (result.majorCategory) setMajorCategory(result.majorCategory)
@@ -111,7 +120,7 @@ export function AddClothingDialog({ open, userId, onClose, onSubmit }: AddClothi
         if (result.color) setColor(result.color)
         if (result.colorName) setColorName(result.colorName)
         if (result.material) setMaterial(result.material)
-        setPhotoHint('AI가 사진을 보고 카테고리 · 색상 · 소재를 채워봤어요. 확인 후 필요하면 수정해 주세요.')
+        setPhotoHint('AI가 사진을 보고 카테고리 · 색상 · 소재를 채워봤어요. 이대로 바로 추가해도 돼요.')
       }
     } catch {
       // 조용히 무시 — 캔버스 기반 색상 추출 결과가 이미 반영돼 있다.
@@ -121,16 +130,12 @@ export function AddClothingDialog({ open, userId, onClose, onSubmit }: AddClothi
   }
 
   function handleSubmit() {
-    if (!brand.trim()) {
-      setError('브랜드는 필수 입력이에요.')
-      return
-    }
     setError(null)
 
     onSubmit({
       userId,
       name: name.trim() || minorCategoryLabel[minorCategory],
-      brand: brand.trim(),
+      brand: brand.trim() || '브랜드 미상',
       majorCategory,
       minorCategory,
       style,
@@ -140,6 +145,7 @@ export function AddClothingDialog({ open, userId, onClose, onSubmit }: AddClothi
       thickness,
       seasons: seasons.length > 0 ? seasons : ['SPRING', 'SUMMER', 'AUTUMN', 'WINTER'],
       price: price ? Number(price) : undefined,
+      photoUrl,
       isPreferred: false,
     })
 
@@ -147,6 +153,7 @@ export function AddClothingDialog({ open, userId, onClose, onSubmit }: AddClothi
     setName('')
     setBrand('')
     setPrice('')
+    setPhotoUrl(undefined)
     setPhotoHint(null)
     onClose()
   }
@@ -164,12 +171,16 @@ export function AddClothingDialog({ open, userId, onClose, onSubmit }: AddClothi
         {/* 미리보기 + 사진 등록 */}
         <div className="tf-addform__preview">
           <div className="tf-addform__glyph">
-            <GarmentGlyph category={minorCategory} color={color} />
+            {photoUrl ? (
+              <img src={photoUrl} alt="업로드한 옷 사진" className="tf-addform__photo-preview" />
+            ) : (
+              <GarmentGlyph category={minorCategory} color={color} />
+            )}
           </div>
           <div className="tf-addform__photo">
             <label className="tf-uploader">
               <Icon name="camera" size={18} />
-              <span>사진에서 색상 자동 추출</span>
+              <span>사진으로 바로 추가</span>
               <input
                 type="file"
                 accept="image/*"
@@ -259,12 +270,12 @@ export function AddClothingDialog({ open, userId, onClose, onSubmit }: AddClothi
 
         <div className="tf-field-row">
           <label className="tf-field">
-            <span>브랜드 *</span>
+            <span>브랜드</span>
             <input
               className="tf-input"
               value={brand}
               onChange={(event) => setBrand(event.target.value)}
-              placeholder="예: UNIQLO"
+              placeholder="비워두면 '브랜드 미상'으로 저장돼요"
             />
           </label>
           <label className="tf-field">

@@ -286,6 +286,14 @@
   border-radius: var(--tf-r-md);
   padding: var(--tf-sp-4);
   aspect-ratio: 4 / 4.4;
+  overflow: hidden;
+}
+.tf-detail__photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--tf-r-sm, 8px);
+  display: block;
 }
 .tf-detail__info {
   display: flex;
@@ -321,6 +329,32 @@
 }
 
 /* ── Recommend ────────────────────────────────────────────── */
+.tf-stylepicker {
+  display: flex;
+  gap: var(--tf-sp-2);
+  margin-bottom: var(--tf-sp-4);
+}
+.tf-stylepicker__tab {
+  flex: 1;
+  padding: var(--tf-sp-2) var(--tf-sp-3);
+  border-radius: var(--tf-r-md);
+  border: 1px solid var(--tf-line);
+  background: var(--tf-surface);
+  color: var(--tf-ink-600);
+  font-weight: 700;
+  font-size: var(--tf-fs-caption);
+  cursor: pointer;
+  transition: var(--tf-t-hover);
+}
+.tf-stylepicker__tab:hover {
+  background: var(--tf-primary-50);
+}
+.tf-stylepicker__tab.is-selected {
+  background: var(--tf-primary-500);
+  border-color: var(--tf-primary-500);
+  color: #fff;
+}
+
 .tf-tpogrid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

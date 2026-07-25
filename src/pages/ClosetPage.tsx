@@ -165,7 +165,11 @@ export function ClosetPage() {
           </button>
 
           <div className="tf-detail__art">
-            <GarmentGlyph category={selected.minorCategory} color={selected.color} />
+            {selected.photoUrl ? (
+              <img src={selected.photoUrl} alt={selected.name} className="tf-detail__photo" />
+            ) : (
+              <GarmentGlyph category={selected.minorCategory} color={selected.color} />
+            )}
           </div>
 
           <div className="tf-detail__info">

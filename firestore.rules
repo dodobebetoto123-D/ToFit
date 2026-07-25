@@ -56,7 +56,7 @@ service cloud.firestore {
       allow update: if signedIn() && (
         resource.data.authorId == request.auth.uid ||
         request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['likedBy', 'likeCount', 'commentCount', 'viewCount'])
+          .hasOnly(['likedBy', 'likeCount', 'commentCount', 'viewCount', 'viewedBy'])
       );
 
       match /comments/{commentId} {

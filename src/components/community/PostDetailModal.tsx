@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
+import { majorCategoryLabel, minorCategoryLabel } from '@/lib/labels'
 import { fromNow } from '@/lib/utils'
 import {
   addCommentDoc,
@@ -48,9 +49,13 @@ export function PostDetailModal({
       setComments([])
       return
     }
-    void incrementPostViewCount(post.id)
+    if (currentUserId) void incrementPostViewCount(post.id, currentUserId)
     return subscribeComments(post.id, setComments)
-  }, [post])
+    // post 객체 전체가 아니라 id에만 반응해야 한다 — post는 매 렌더 새 객체라
+    // 전체를 의존성에 두면 조회수를 올릴 때마다 posts 구독이 갱신 → post 참조가
+    // 바뀜 → effect가 다시 실행 → 조회수가 또 오르는 무한 루프가 생긴다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [post?.id, currentUserId])
 
   if (!post) {
     return <dialog ref={dialogRef} className="tf-dialog" onCancel={onClose} onClose={onClose} />
@@ -97,14 +102,18 @@ export function PostDetailModal({
 
       <div className="tf-dialog__body">
         <div className="tf-postdetail__media">
-          <PostPhoto theme={post.outfitPhotoTheme} />
+          {post.photoUrl ? (
+            <img src={post.photoUrl} alt={post.title} className="tf-postdetail__photo" />
+          ) : (
+            <PostPhoto theme={post.outfitPhotoTheme} />
+          )}
         </div>
 
         <div className="tf-postdetail__author">
           <Avatar nickname={post.authorNickname} color={post.authorAvatarColor} size={32} />
           <div className="tf-postdetail__author-info">
             <p className="tf-postcard__nickname">{post.authorNickname}</p>
-            <p className="tf-micro">{fromNow(post.createdAt)} · 조회 {post.viewCount}</p>
+            <p className="tf-micro">{fromNow(post.createdAt)} · 조회 {post.viewedBy.length}</p>
           </div>
           {isAuthor && (
             <Button variant="ghost" size="sm" onClick={handleDeletePost}>
@@ -116,6 +125,27 @@ export function PostDetailModal({
         <h3 className="tf-postdetail__title">{post.title}</h3>
         <p className="tf-postdetail__content">{post.content}</p>
         <p className="tf-postcard__tags">{post.hashtags.map((tag) => `#${tag}`).join(' ')}</p>
+
+        {post.outfitSlots && post.outfitSlots.length > 0 && (
+          <div className="tf-postdetail__outfit">
+            <h4 className="tf-subtitle">착용한 옷 정보</h4>
+            <ul className="tf-outfititems">
+              {post.outfitSlots.map((slot) => (
+                <li key={slot.id} className="tf-outfititem">
+                  <span className="tf-outfititem__swatch" style={{ background: slot.color }} aria-hidden="true" />
+                  <div className="tf-outfititem__info">
+                    <p className="tf-micro">{slot.brand}</p>
+                    <p className="tf-outfititem__name">{slot.name}</p>
+                    <p className="tf-caption">
+                      {slot.colorName} · {majorCategoryLabel[slot.majorCategory]} ·{' '}
+                      {minorCategoryLabel[slot.minorCategory]}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <button
           type="button"

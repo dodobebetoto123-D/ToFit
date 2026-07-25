@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { AdFitBanner } from '@/components/ads/AdFitBanner'
 import { ClothingCard } from '@/components/closet/ClothingCard'
 import { PostCard } from '@/components/community/PostCard'
 import { MascotBubble } from '@/components/outfit/MascotBubble'
@@ -49,16 +50,7 @@ const STYLE_GUIDE = [
 export function HomePage() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const {
-    closet,
-    posts,
-    toggleLike,
-    saveOutfit,
-    isSaved,
-    togglePreferred,
-    remainingRecommendations,
-    consumeRecommendation,
-  } = useAppData()
+  const { closet, posts, toggleLike, saveOutfit, isSaved, togglePreferred } = useAppData()
   const { weather, isEstimate: weatherIsEstimate } = useWeather()
 
   const [situation, setSituation] = useState<Situation>('OFFICE')
@@ -91,10 +83,6 @@ export function HomePage() {
   )
 
   function handleReshuffle() {
-    if (!consumeRecommendation()) {
-      setNotice('오늘 무료 추천 2회를 모두 썼어요. 광고를 보거나 프리미엄으로 계속할 수 있어요.')
-      return
-    }
     setNotice(null)
     setReshuffle((count) => count + 1)
   }
@@ -189,7 +177,7 @@ export function HomePage() {
                       leading={<Icon name="refresh" size={16} />}
                       onClick={handleReshuffle}
                     >
-                      다시 추천 ({remainingRecommendations})
+                      다시 추천
                     </Button>
                   </div>
                 </div>
@@ -309,6 +297,8 @@ export function HomePage() {
           ))}
         </div>
       </Card>
+
+      <AdFitBanner width={320} height={100} className="tf-reveal" />
     </div>
   )
 }
