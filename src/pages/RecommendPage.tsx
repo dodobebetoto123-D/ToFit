@@ -11,6 +11,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useOutfitRecommendation } from '@/hooks/useOutfitRecommendation'
 import { useWeather } from '@/hooks/useWeather'
 import {
+  bodyShapeLabel,
   feedbackTagLabel,
   majorCategoryLabel,
   minorCategoryLabel,
@@ -20,12 +21,19 @@ import {
 import { cn, formatPrice } from '@/lib/utils'
 import { seasonForTemperature } from '@/services/recommend'
 import { trackRecentlyViewed } from '@/services/firestoreRecentlyViewed'
-import { FEEDBACK_TAGS, SITUATIONS, type CoordinateSlot, type FeedbackTag, type Situation } from '@/types'
+import {
+  BODY_SHAPES,
+  FEEDBACK_TAGS,
+  SITUATIONS,
+  type CoordinateSlot,
+  type FeedbackTag,
+  type Situation,
+} from '@/types'
 
 export function RecommendPage() {
   const { user } = useAuth()
-  const { closet, saveOutfit, isSaved, markCoordinateWorn, addFeedback } = useAppData()
-  const { weather, isEstimate: weatherIsEstimate } = useWeather()
+  const { closet, saveOutfit, isSaved, wearCoordinateNow, addFeedback } = useAppData()
+  const { weather, isEstimate: weatherIsEstimate, locationDenied, retryLocation } = useWeather()
 
   const [situation, setSituation] = useState<Situation>('DAILY')
   const [closetOnly, setClosetOnly] = useState(false)
@@ -104,6 +112,11 @@ export function RecommendPage() {
             {weather.temperatureHigh}℃ / 최저 {weather.temperatureLow}℃)
             {weatherIsEstimate && ' — 실시간 조회가 안 돼 추정치를 보여드려요'}
           </p>
+          {locationDenied && (
+            <button type="button" className="tf-textlink" onClick={retryLocation}>
+              위치 허용하고 내 지역 날씨로 보기
+            </button>
+          )}
         </div>
       </header>
 
@@ -224,8 +237,8 @@ export function RecommendPage() {
               variant="secondary"
               leading={<Icon name="check" size={16} />}
               onClick={() => {
-                markCoordinateWorn(coordinate)
-                setNotice('오늘 착용으로 기록했어요. 다음 추천에 반영할게요.')
+                wearCoordinateNow(coordinate)
+                setNotice('오늘 착용으로 기록했어요. 스타일 노트에도 남았어요.')
               }}
             >
               오늘 이거 입었어요
@@ -335,6 +348,30 @@ export function RecommendPage() {
           </p>
         </Card>
       )}
+
+      {/* ── 체형별 코디 적합도 ────────────────────────────── */}
+      <Card className="tf-reveal" icon="📐" title="체형별 코디 적합도">
+        <p className="tf-caption">
+          지금 이 코디의 아이템 구성으로 계산한 값이에요. 스타일이나 상황을 바꾸면 값도 달라져요.
+        </p>
+        <ul className="tf-compat">
+          {BODY_SHAPES.map((shape) => {
+            const score = Math.round((coordinate.bodyShapeCompatibility[shape] ?? 0.6) * 100)
+            return (
+              <li key={shape} className={cn('tf-compat__row', shape === user.bodyShape && 'is-me')}>
+                <span className="tf-compat__label">
+                  {bodyShapeLabel[shape]}
+                  {shape === user.bodyShape && <span className="tf-compat__me">나</span>}
+                </span>
+                <div className="tf-meter__track">
+                  <div className="tf-meter__fill" style={{ width: `${score}%` }} />
+                </div>
+                <span className="tf-compat__score">{score}</span>
+              </li>
+            )
+          })}
+        </ul>
+      </Card>
 
       {/* ── 피드백 ────────────────────────────────────────── */}
       <Card className="tf-reveal" icon="💬" title="이 코디 어땠나요?">

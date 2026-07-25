@@ -22,7 +22,7 @@ export function Sidebar() {
   return (
     <aside className="tf-sidebar">
       <NavLink to="/" className="tf-sidebar__brand" aria-label="ToFit 홈">
-        <Logo size="sm" />
+        <Logo size="lg" />
       </NavLink>
 
       <nav className="tf-sidebar__nav" aria-label="주 메뉴">

@@ -14,6 +14,7 @@ import {
   styleTagLabel,
 } from '@/lib/labels'
 import { cn } from '@/lib/utils'
+import { computeClosetBodyShapeFit } from '@/services/recommend'
 import { BODY_SHAPES, PERSONAL_COLORS, type BodyShape, type PersonalColor } from '@/types'
 
 
@@ -236,13 +237,15 @@ export function BodyPage() {
         </Card>
       </div>
 
-      <Card className="tf-reveal" icon="📐" title="체형별 코디 적합도">
+      <Card className="tf-reveal" icon="📐" title="체형별 옷장 적합도">
         <p className="tf-caption">
-          같은 코디라도 골격형에 따라 어울리는 정도가 달라요. 추천 엔진은 이 값을 가중치로 씁니다.
+          내 옷장에 있는 옷들이 체형별로 얼마나 잘 맞는 카테고리인지 계산한 값이에요. 옷장이
+          바뀌면 값도 달라져요. (오늘의 코디 하나만 놓고 본 적합도는 코디 추천 페이지에서 볼
+          수 있어요.)
         </p>
         <ul className="tf-compat">
           {BODY_SHAPES.map((shape) => {
-            const score = shape === user.bodyShape ? 92 : shape === 'NATURAL' ? 74 : 66
+            const score = Math.round(computeClosetBodyShapeFit(closet, shape) * 100)
             return (
               <li key={shape} className={cn('tf-compat__row', shape === user.bodyShape && 'is-me')}>
                 <span className="tf-compat__label">

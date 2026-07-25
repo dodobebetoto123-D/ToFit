@@ -45,17 +45,24 @@ export interface UseWeatherResult {
   loading: boolean
   /** 실시간 조회 실패로 계절 평균 추정치를 보여주는 중인지 */
   isEstimate: boolean
+  /** 위치 권한을 못 받아 서울 기준으로 보여주고 있는지 — true면 재시도 버튼을 보여줄 수 있다 */
+  locationDenied: boolean
+  /** 위치 권한을 다시 요청하고 날씨를 새로 불러온다 */
+  retryLocation: () => void
 }
 
 export function useWeather(): UseWeatherResult {
   const [weather, setWeather] = useState<WeatherSnapshot>(seasonalEstimate)
   const [loading, setLoading] = useState(true)
   const [isEstimate, setIsEstimate] = useState(true)
+  const [locationDenied, setLocationDenied] = useState(false)
+  const [retryCount, setRetryCount] = useState(0)
 
   useEffect(() => {
     let cancelled = false
 
     async function load() {
+      setLoading(true)
       const position = await getPosition()
       const grid = position
         ? latLonToGrid(position.coords.latitude, position.coords.longitude)
@@ -65,6 +72,7 @@ export function useWeather(): UseWeatherResult {
       const real = await fetchKmaWeather(grid.nx, grid.ny, locationName)
       if (cancelled) return
 
+      setLocationDenied(!position)
       if (real) {
         setWeather(real)
         setIsEstimate(false)
@@ -79,7 +87,9 @@ export function useWeather(): UseWeatherResult {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [retryCount])
 
-  return { weather, loading, isEstimate }
+  const retryLocation = () => setRetryCount((count) => count + 1)
+
+  return { weather, loading, isEstimate, locationDenied, retryLocation }
 }

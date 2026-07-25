@@ -279,9 +279,7 @@ export interface CommunityPost {
   likedBy: string[]
   likeCount: number
   commentCount: number
-  /** 조회한 사용자 uid 목록 — 중복 조회를 걸러 "진짜" 유니크 조회수만 남긴다 */
-  viewedBy: string[]
-  /** @deprecated viewedBy.length를 쓴다. 예전 버그(중복 카운트)로 오염된 필드라 더는 읽지 않는다 */
+  /** 조회수 — 게시글을 열 때마다 1씩 오른다 */
   viewCount: number
   /** 현재 로그인한 사용자 기준 파생값 (likedBy.includes(내 uid)) — Firestore에 저장하지 않는다 */
   liked: boolean

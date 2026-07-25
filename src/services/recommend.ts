@@ -9,7 +9,9 @@
  * 서버 AI 모델이 붙기 전까지 쓰는 규칙 기반 스코어러다.
  * 인터페이스(`recommendCoordinate`)는 그대로 두고 내부만 교체하면 된다.
  */
+import { BODY_SHAPES } from '@/types'
 import type {
+  BodyShape,
   ClothingItem,
   Coordinate,
   CoordinateSlot,
@@ -134,6 +136,42 @@ function recencyPenalty(lastWornAt: string | undefined): number {
   if (days < 7) return 0.3
   if (days < 14) return 0.1
   return 0
+}
+
+/**
+ * 체형별로 잘 받는/피해야 할 카테고리 — `BodyPage.tsx`의 스타일 가이드 문구
+ * (예: "스트레이트 체형은 목선을 여는 셔츠가 잘 어울리고, 하이넥·볼륨 니트는 피하는 게
+ * 좋다")를 실제 카테고리 매핑으로 옮긴 것. 코디 적합도·옷장 적합도 계산에 함께 쓴다.
+ */
+const BODY_SHAPE_FIT: Record<BodyShape, { favor: MinorCategory[]; avoid: MinorCategory[] }> = {
+  STRAIGHT: { favor: ['SHIRT', 'BLOUSE', 'JACKET', 'SLACKS'], avoid: ['HOODIE', 'SWEATER', 'PADDING'] },
+  WAVE: { favor: ['BLOUSE', 'SKIRT', 'CARDIGAN'], avoid: ['JACKET', 'COAT', 'PADDING', 'DENIM'] },
+  NATURAL: { favor: ['HOODIE', 'SWEATER', 'PADDING', 'COAT', 'DENIM'], avoid: ['T_SHIRT', 'BLOUSE', 'SKIRT'] },
+}
+
+/** 코디 한 벌의 카테고리 구성으로 체형별 적합도(0~1)를 계산한다 — 코디가 다르면 값도 달라진다 */
+function computeBodyShapeCompatibility(slots: CoordinateSlot[]): Partial<Record<BodyShape, number>> {
+  const result: Partial<Record<BodyShape, number>> = {}
+  for (const shape of BODY_SHAPES) {
+    const fit = BODY_SHAPE_FIT[shape]
+    let score = 0.6
+    for (const slot of slots) {
+      if (fit.favor.includes(slot.minorCategory)) score += 0.08
+      if (fit.avoid.includes(slot.minorCategory)) score -= 0.08
+    }
+    result[shape] = Math.max(0.3, Math.min(0.98, score))
+  }
+  return result
+}
+
+/** 옷장 전체 구성으로 체형 적합도(0~1)를 계산한다 — 옷장이 바뀌면 값도 바뀐다 */
+export function computeClosetBodyShapeFit(closet: ClothingItem[], shape: BodyShape): number {
+  if (closet.length === 0) return 0.6
+  const fit = BODY_SHAPE_FIT[shape]
+  const favorCount = closet.filter((item) => fit.favor.includes(item.minorCategory)).length
+  const avoidCount = closet.filter((item) => fit.avoid.includes(item.minorCategory)).length
+  const score = 0.5 + ((favorCount - avoidCount) / closet.length) * 0.5
+  return Math.max(0.3, Math.min(0.98, score))
 }
 
 export interface ScoreBreakdown {
@@ -454,28 +492,28 @@ export interface RecommendResult {
   filledByBrand: MajorCategory[]
 }
 
-/**
- * DATE 상황의 기본 폴백(블라우스·스커트)은 여성 스타일이라 남성 프로필에는 안 맞는다.
- * 남성 프로필일 때만 이 두 칸을 셔츠·슬랙스 계열로 바꾼다 — 나머지 상황은 이미 중성적인
- * 카테고리라 손댈 필요가 없다.
- */
-const DATE_MALE_OVERRIDE: Partial<Record<MajorCategory, FallbackItem[]>> = {
-  TOP: [
-    { minorCategory: 'SHIRT', name: '옥스포드 셔츠', brand: 'MUSINSA STANDARD', color: '#c6d4f2', colorName: '스카이 블루', price: 39000, source: 'BRAND' },
-    { minorCategory: 'SWEATER', name: '하프넥 니트', brand: 'MARHEN.J', color: '#2f3e56', colorName: '네이비', price: 59000, source: 'BRAND' },
-    { minorCategory: 'SHIRT', name: '베이직 셔츠', brand: 'COS', color: '#f2f2f0', colorName: '화이트', price: 49000, source: 'BRAND' },
-  ],
-  BOTTOM: [
-    { minorCategory: 'SLACKS', name: '슬림 슬랙스', brand: 'MUSINSA STANDARD', color: '#2f3e56', colorName: '네이비', price: 55000, source: 'BRAND' },
-    { minorCategory: 'SLACKS', name: '와이드 슬랙스', brand: 'COS', color: '#c8b596', colorName: '베이지', price: 79000, source: 'BRAND' },
-    { minorCategory: 'DENIM', name: '슬림 데님', brand: "LEVI'S", color: '#1c1c1f', colorName: '블랙', price: 89000, source: 'BRAND' },
-  ],
-}
-
-/** 같은 인덱스가 없으면(변형 수가 부족하면) 마지막 변형으로 대체한다 */
+/** 나머지 연산으로 순환 인덱싱한다 — variantIndex가 배열 길이를 넘어도(다시 추천 오프셋)
+ * 항상 마지막 변형에 고정되지 않고 순환하며 실제로 다른 조합이 나오게 한다. */
 function pickVariant(items: FallbackItem[] | undefined, variantIndex: number): FallbackItem | undefined {
   if (!items || items.length === 0) return undefined
-  return items[variantIndex] ?? items[items.length - 1]
+  return items[((variantIndex % items.length) + items.length) % items.length]
+}
+
+/**
+ * BRAND_FALLBACK의 변형들 중 일부(DATE의 블라우스, PARTY/WEDDING/OFFICE의 블라우스·스커트
+ * 변형 등)는 여성 스타일이라 남성 프로필에는 안 맞는다. 상황별로 예외를 따로 두는 대신
+ * 카테고리 자체를 남성 프로필일 때만 일괄 변환한다 — 어느 상황에서 나오든 항상 적용된다.
+ */
+const MASCULINE_CATEGORY_SWAP: Partial<Record<MinorCategory, MinorCategory>> = {
+  SKIRT: 'SLACKS',
+  BLOUSE: 'SHIRT',
+}
+
+function applyGenderAdjustment(item: FallbackItem, gender: UserProfile['gender']): FallbackItem {
+  if (gender !== 'MALE') return item
+  const swapTo = MASCULINE_CATEGORY_SWAP[item.minorCategory]
+  if (!swapTo) return item
+  return { ...item, minorCategory: swapTo, name: `${item.colorName} ${minorCategoryLabel[swapTo]}` }
 }
 
 function fallbackFor(
@@ -484,10 +522,8 @@ function fallbackFor(
   gender: UserProfile['gender'],
   variantIndex: number,
 ): FallbackItem | undefined {
-  if (situation === 'DATE' && gender === 'MALE' && DATE_MALE_OVERRIDE[category]) {
-    return pickVariant(DATE_MALE_OVERRIDE[category], variantIndex)
-  }
-  return pickVariant(BRAND_FALLBACK[situation]?.[category], variantIndex)
+  const picked = pickVariant(BRAND_FALLBACK[situation]?.[category], variantIndex)
+  return picked ? applyGenderAdjustment(picked, gender) : undefined
 }
 
 /**
@@ -511,7 +547,7 @@ export function recommendCoordinate(options: RecommendOptions, variantIndex = 0)
       .map((item) => scoreItem(item, { weather, situation, profile, excludeItemIds }))
       .sort((a, b) => b.total - a.total)
 
-    const best = candidates[variantIndex] ?? candidates[0]
+    const best = candidates.length > 0 ? candidates[variantIndex % candidates.length] : undefined
 
     if (best && best.total > 0) {
       breakdown.push(best)
@@ -555,7 +591,7 @@ export function recommendCoordinate(options: RecommendOptions, variantIndex = 0)
     slots,
     reason: buildReason({ profile, weather, situation, breakdown, filledByBrand }),
     mascotComment: buildMascotComment(slots, weather),
-    bodyShapeCompatibility: { [profile.bodyShape]: 0.9 },
+    bodyShapeCompatibility: computeBodyShapeCompatibility(slots),
     isGoodCoord: true,
     createdAt: new Date().toISOString(),
   }
@@ -563,9 +599,18 @@ export function recommendCoordinate(options: RecommendOptions, variantIndex = 0)
   return { coordinate, breakdown, filledByBrand }
 }
 
-/** 코디 후보 3개를 만든다 — 사용자가 스타일대로 골라볼 수 있게 한다 */
-export function recommendCoordinates(options: RecommendOptions, count = 3): RecommendResult[] {
-  return Array.from({ length: count }, (_, index) => recommendCoordinate(options, index))
+/**
+ * 코디 후보 3개를 만든다 — 사용자가 스타일대로 골라볼 수 있게 한다.
+ * `offset`은 "다시 추천"을 누를 때마다 늘어나는 값이다 — 옷장이 비어 있어 후보 3개가
+ * 전부 브랜드 폴백으로 채워지는 경우에도, offset이 변형 선택에 반영돼 실제로 다른
+ * 조합이 나온다 (없으면 옷장이 부족한 사용자는 "다시 추천"을 눌러도 항상 같았다).
+ */
+export function recommendCoordinates(
+  options: RecommendOptions,
+  count = 3,
+  offset = 0,
+): RecommendResult[] {
+  return Array.from({ length: count }, (_, index) => recommendCoordinate(options, index + offset))
 }
 
 /* ─── 문구 생성 ───────────────────────────────────────────── */

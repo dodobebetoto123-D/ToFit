@@ -31,7 +31,11 @@ export function useOutfitRecommendation(input: UseOutfitRecommendationInput) {
       .slice(0, reshuffle)
       .map((item) => item.id)
 
-    return recommendCoordinates({ closet, profile, weather, situation, closetOnly, excludeItemIds })
+    return recommendCoordinates(
+      { closet, profile, weather, situation, closetOnly, excludeItemIds },
+      3,
+      reshuffle,
+    )
   }, [closet, profile, weather, situation, closetOnly, reshuffle])
 
   const [selectedIndex, setSelectedIndex] = useState(0)

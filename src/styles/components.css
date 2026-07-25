@@ -717,12 +717,22 @@
   flex: 1;
 }
 .tf-slot__art {
+  display: block;
+  width: 100%;
   background: var(--tf-surface);
+  border: none;
   border-radius: var(--tf-r-md);
   padding: var(--tf-sp-3);
   aspect-ratio: 4 / 4.4;
   transition: var(--tf-t-hover);
   overflow: hidden;
+  font: inherit;
+}
+.tf-slot__art--clickable {
+  cursor: pointer;
+}
+.tf-slot__art--clickable:hover {
+  background: var(--tf-primary-50);
 }
 .tf-slot__photo {
   width: 100%;

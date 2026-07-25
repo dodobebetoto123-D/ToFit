@@ -58,6 +58,17 @@ export function ClosetPage() {
     }
   }, [searchParams, setSearchParams])
 
+  // 코디 보드에서 내 옷장 아이템을 눌러 `/closet?item={id}`로 들어오면 그 아이템의
+  // 상세 패널을 바로 연다.
+  useEffect(() => {
+    const itemId = searchParams.get('item')
+    if (!itemId || closetLoading) return
+    const item = closet.find((i) => i.id === itemId)
+    if (item) setSelected(item)
+    searchParams.delete('item')
+    setSearchParams(searchParams, { replace: true })
+  }, [searchParams, setSearchParams, closet, closetLoading])
+
   const visible = useMemo(() => {
     let items = filter === 'ALL' ? closet : closet.filter((i) => i.majorCategory === filter)
     if (preferredOnly) items = items.filter((i) => i.isPreferred)

@@ -171,7 +171,6 @@ async function ensureAccount(seed, index) {
     likedBy: [],
     likeCount: 0,
     commentCount: 0,
-    viewedBy: [],
     viewCount: 0,
     createdAt: new Date(Date.now() - index * 86400_000).toISOString(),
   })

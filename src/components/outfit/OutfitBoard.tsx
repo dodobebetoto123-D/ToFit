@@ -2,6 +2,7 @@
  * 추천 코디 한 벌을 펼쳐 보여주는 보드.
  * 상의/하의는 크게, 소품은 우측에 작게 — 시안의 배치를 그대로 따른다.
  */
+import { useNavigate } from 'react-router-dom'
 import { GarmentGlyph } from '@/components/closet/GarmentGlyph'
 import { majorCategoryLabel } from '@/lib/labels'
 import { formatPrice } from '@/lib/utils'
@@ -25,12 +26,34 @@ function SlotArt({ slot }: { slot: CoordinateSlot }) {
   )
 }
 
-function HeroSlot({ slot }: { slot: CoordinateSlot }) {
-  return (
-    <figure className="tf-slot tf-slot--hero">
+/** 내 옷장에서 온 아이템이면 그 옷의 옷장 상세화면으로 이동할 수 있게 버튼으로 감싼다 */
+function SlotArtBox({ slot }: { slot: CoordinateSlot }) {
+  const navigate = useNavigate()
+
+  if (!slot.clothingItemId) {
+    return (
       <div className="tf-slot__art">
         <SlotArt slot={slot} />
       </div>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      className="tf-slot__art tf-slot__art--clickable"
+      onClick={() => navigate(`/closet?item=${slot.clothingItemId}`)}
+      aria-label={`${slot.name} 옷장 상세보기`}
+    >
+      <SlotArt slot={slot} />
+    </button>
+  )
+}
+
+function HeroSlot({ slot }: { slot: CoordinateSlot }) {
+  return (
+    <figure className="tf-slot tf-slot--hero">
+      <SlotArtBox slot={slot} />
       <figcaption className="tf-slot__caption">
         <span className="tf-slot__name tf-truncate">{slot.name}</span>
         <SlotBadge slot={slot} />
@@ -42,9 +65,7 @@ function HeroSlot({ slot }: { slot: CoordinateSlot }) {
 function SideSlot({ slot }: { slot: CoordinateSlot }) {
   return (
     <figure className="tf-slot tf-slot--side">
-      <div className="tf-slot__art">
-        <SlotArt slot={slot} />
-      </div>
+      <SlotArtBox slot={slot} />
       <figcaption className="tf-slot__caption tf-slot__caption--stack">
         <span className="tf-slot__brand tf-truncate">{slot.brand}</span>
         <span className="tf-slot__name tf-truncate">{slot.name}</span>

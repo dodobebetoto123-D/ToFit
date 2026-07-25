@@ -164,6 +164,26 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [uid, savedOutfits, markCoordinateWorn],
   )
 
+  /**
+   * "오늘 이거 입었어요" 버튼용 — 먼저 저장을 안 한 코디라도 바로 착용 기록이 남게
+   * 한다. 예전엔 옷장 아이템의 wearCount만 올리고 SavedOutfit을 안 만들어서, 저장을
+   * 안 하고 바로 입었어요만 누르면 스타일 노트(저장한 코디 중 worn인 것)에 아무것도
+   * 안 남는 버그가 있었다.
+   */
+  const wearCoordinateNow = useCallback(
+    (coordinate: Coordinate) => {
+      if (!uid) return
+      markCoordinateWorn(coordinate)
+      const existing = savedOutfits.find((saved) => saved.coordinate.id === coordinate.id)
+      if (existing) {
+        if (!existing.worn) void setSavedOutfitWorn(uid, existing.id, true)
+      } else {
+        void addSavedOutfitDoc(uid, coordinate, true)
+      }
+    },
+    [uid, savedOutfits, markCoordinateWorn],
+  )
+
   const savedCoordinateIds = useMemo(
     () => new Set(savedOutfits.map((saved) => saved.coordinate.id)),
     [savedOutfits],
@@ -216,6 +236,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       unsaveOutfit,
       isSaved,
       toggleWorn,
+      wearCoordinateNow,
       feedbacks,
       addFeedback,
       posts,
@@ -236,6 +257,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       unsaveOutfit,
       isSaved,
       toggleWorn,
+      wearCoordinateNow,
       feedbacks,
       addFeedback,
       posts,

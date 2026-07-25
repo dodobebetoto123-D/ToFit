@@ -21,7 +21,7 @@ interface CreatePostDialogProps {
   onSubmit: (
     post: Omit<
       CommunityPost,
-      'id' | 'likedBy' | 'likeCount' | 'commentCount' | 'viewedBy' | 'viewCount' | 'liked' | 'createdAt'
+      'id' | 'likedBy' | 'likeCount' | 'commentCount' | 'viewCount' | 'liked' | 'createdAt'
     >,
   ) => void
   authorId: string

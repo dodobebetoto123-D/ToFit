@@ -15,6 +15,8 @@ export interface AppDataContextValue {
   unsaveOutfit: (savedId: string) => void
   isSaved: (coordinateId: string) => boolean
   toggleWorn: (savedId: string) => void
+  /** "오늘 이거 입었어요" — 저장 여부와 무관하게 바로 착용 기록(worn:true)을 남긴다 */
+  wearCoordinateNow: (coordinate: Coordinate) => void
 
   feedbacks: OutfitFeedback[]
   addFeedback: (feedback: Omit<OutfitFeedback, 'id' | 'createdAt'>) => void
@@ -24,7 +26,7 @@ export interface AppDataContextValue {
   createPost: (
     post: Omit<
       CommunityPost,
-      'id' | 'likedBy' | 'likeCount' | 'commentCount' | 'viewedBy' | 'viewCount' | 'liked' | 'createdAt'
+      'id' | 'likedBy' | 'likeCount' | 'commentCount' | 'viewCount' | 'liked' | 'createdAt'
     >,
   ) => void
   toggleLike: (postId: string) => void

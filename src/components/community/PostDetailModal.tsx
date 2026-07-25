@@ -49,13 +49,13 @@ export function PostDetailModal({
       setComments([])
       return
     }
-    if (currentUserId) void incrementPostViewCount(post.id, currentUserId)
+    void incrementPostViewCount(post.id)
     return subscribeComments(post.id, setComments)
     // post 객체 전체가 아니라 id에만 반응해야 한다 — post는 매 렌더 새 객체라
     // 전체를 의존성에 두면 조회수를 올릴 때마다 posts 구독이 갱신 → post 참조가
     // 바뀜 → effect가 다시 실행 → 조회수가 또 오르는 무한 루프가 생긴다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [post?.id, currentUserId])
+  }, [post?.id])
 
   if (!post) {
     return <dialog ref={dialogRef} className="tf-dialog" onCancel={onClose} onClose={onClose} />
@@ -113,7 +113,7 @@ export function PostDetailModal({
           <Avatar nickname={post.authorNickname} color={post.authorAvatarColor} size={32} />
           <div className="tf-postdetail__author-info">
             <p className="tf-postcard__nickname">{post.authorNickname}</p>
-            <p className="tf-micro">{fromNow(post.createdAt)} · 조회 {post.viewedBy.length}</p>
+            <p className="tf-micro">{fromNow(post.createdAt)} · 조회 {post.viewCount}</p>
           </div>
           {isAuthor && (
             <Button variant="ghost" size="sm" onClick={handleDeletePost}>

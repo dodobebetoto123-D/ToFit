@@ -13,15 +13,16 @@ import { bodyShapeLabel } from '@/lib/labels'
 import { isFirebaseConfigured } from '@/lib/firebase'
 import { avatarColorForUid } from '@/services/firestoreProfile'
 import { subscribePopularPosts } from '@/services/firestoreCommunity'
-import { subscribeActivityRanking } from '@/services/firestoreTwins'
+import { fetchPublicProfilesByIds, subscribeActivityRanking } from '@/services/firestoreTwins'
 import type { CommunityPost, PublicProfile, RankingScope } from '@/types'
 
-type RankingTab = 'POSTS' | 'TWINS' | 'ACTIVITY'
+type RankingTab = 'POSTS' | 'TWINS' | 'ACTIVITY' | 'FOLLOWING'
 
 const TABS: ReadonlyArray<SegmentedOption<RankingTab>> = [
   { value: 'POSTS', label: '커뮤니티 인기 코디' },
   { value: 'TWINS', label: '스타일 트윈' },
   { value: 'ACTIVITY', label: '내 활동' },
+  { value: 'FOLLOWING', label: '팔로잉' },
 ]
 
 const SCOPE_TABS: ReadonlyArray<SegmentedOption<RankingScope>> = [
@@ -204,6 +205,60 @@ function ActivityRanking() {
   )
 }
 
+/* ── 4. 팔로잉 목록 ────────────────────────────────────────── */
+
+function FollowingList() {
+  const { user, updateProfile } = useAuth()
+  const [profiles, setProfiles] = useState<PublicProfile[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!isFirebaseConfigured || !user || user.following.length === 0) {
+      setProfiles([])
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+    fetchPublicProfilesByIds(user.following).then((result) => {
+      setProfiles(result)
+      setLoading(false)
+    })
+  }, [user])
+
+  function handleUnfollow(uid: string) {
+    if (!user) return
+    void updateProfile({ following: user.following.filter((id) => id !== uid) })
+    setProfiles((prev) => prev.filter((p) => p.uid !== uid))
+  }
+
+  return (
+    <Card className="tf-reveal" icon="🤝" title="내가 팔로우한 사람">
+      {loading ? (
+        <MascotBubble message="팔로잉 목록을 불러오는 중이에요..." mood="thinking" />
+      ) : profiles.length === 0 ? (
+        <MascotBubble message="아직 팔로우한 사람이 없어요. 스타일 트윈에서 팔로우해 보세요!" mood="thinking" />
+      ) : (
+        <ul className="tf-ranklist tf-stagger">
+          {profiles.map((profile) => (
+            <li key={profile.uid} className="tf-rankrow">
+              <Avatar nickname={profile.nickname} color={profile.avatarColor} size={38} />
+              <div className="tf-rankrow__info">
+                <p className="tf-rankrow__name">{profile.nickname}</p>
+                <p className="tf-micro">
+                  {profile.height}cm · {profile.weight}kg · {bodyShapeLabel[profile.bodyShape]}
+                </p>
+              </div>
+              <Button size="sm" variant="soft" onClick={() => handleUnfollow(profile.uid)}>
+                언팔로우
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
+  )
+}
+
 export function RankingPage() {
   const [tab, setTab] = useState<RankingTab>('POSTS')
 
@@ -223,6 +278,7 @@ export function RankingPage() {
       {tab === 'POSTS' && <PopularPostsRanking />}
       {tab === 'TWINS' && <TwinRanking />}
       {tab === 'ACTIVITY' && <ActivityRanking />}
+      {tab === 'FOLLOWING' && <FollowingList />}
     </div>
   )
 }

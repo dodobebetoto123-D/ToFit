@@ -42,6 +42,19 @@ export function subscribePosts(myUid: string | null, onChange: (posts: Community
 }
 
 /**
+ * 내가 좋아요 누른 게시글 — "찜한 코디" 페이지에서 저장한 코디와 함께 보여준다.
+ * array-contains + 다른 필드 orderBy는 복합 색인이 필요해, 정렬은 클라이언트에서 한다.
+ */
+export function subscribeLikedPosts(uid: string, onChange: (posts: CommunityPost[]) => void) {
+  const q = query(postsCollection(), where('likedBy', 'array-contains', uid))
+  return onSnapshot(q, (snap) => {
+    const posts = snap.docs.map((d) => toPost(d.data() as RawPost, uid))
+    posts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    onChange(posts)
+  })
+}
+
+/**
  * 인기 코디 랭킹 — 기간별(주간/월간/전체) 좋아요순 상위 N개.
  *
  * Firestore는 range 필터(createdAt >=)를 걸면 그 필드가 반드시 1차 정렬 기준이어야 해서
@@ -78,7 +91,7 @@ export function subscribePopularPosts(
 export async function createPostDoc(
   post: Omit<
     CommunityPost,
-    'id' | 'likedBy' | 'likeCount' | 'commentCount' | 'viewedBy' | 'viewCount' | 'liked' | 'createdAt'
+    'id' | 'likedBy' | 'likeCount' | 'commentCount' | 'viewCount' | 'liked' | 'createdAt'
   >,
 ): Promise<void> {
   const id = createId('post')
@@ -88,7 +101,6 @@ export async function createPostDoc(
     likedBy: [],
     likeCount: 0,
     commentCount: 0,
-    viewedBy: [],
     viewCount: 0,
     createdAt: new Date().toISOString(),
   }
@@ -106,9 +118,8 @@ export async function deletePostDoc(postId: string): Promise<void> {
   await deleteDoc(doc(postsCollection(), postId))
 }
 
-/** 같은 사용자가 여러 번 열어도 유니크 조회수는 한 번만 오른다 */
-export async function incrementPostViewCount(postId: string, uid: string): Promise<void> {
-  await updateDoc(doc(postsCollection(), postId), { viewedBy: arrayUnion(uid) })
+export async function incrementPostViewCount(postId: string): Promise<void> {
+  await updateDoc(doc(postsCollection(), postId), { viewCount: increment(1) })
 }
 
 /* ─────────────────────────────────────────────────────────────

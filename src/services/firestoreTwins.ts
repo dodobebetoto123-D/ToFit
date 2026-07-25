@@ -4,12 +4,13 @@
  */
 import {
   collection,
+  doc as docRef,
+  getDoc,
   getDocs,
   onSnapshot,
   orderBy,
   query,
   type DocumentData,
-  type QueryDocumentSnapshot,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import type { BodyShape, PersonalColor, PublicProfile, StyleTwin } from '@/types'
@@ -22,7 +23,7 @@ function publicProfilesCollection() {
  * Firestore 문서가 프로필 저장 도중(레이스) 또는 스키마 변경 이전에 만들어졌을 수 있어
  * 필드별로 방어적으로 채운다. 문서 ID를 uid의 최종 근거로 삼는다.
  */
-function normalizeProfile(doc: QueryDocumentSnapshot<DocumentData>): PublicProfile {
+function normalizeProfile(doc: { id: string; data: () => DocumentData | undefined }): PublicProfile {
   const raw = doc.data() as Partial<PublicProfile>
   return {
     uid: doc.id,
@@ -52,6 +53,15 @@ function isDisplayable(profile: PublicProfile): boolean {
 export async function fetchAllPublicProfiles(): Promise<PublicProfile[]> {
   const snap = await getDocs(publicProfilesCollection())
   return snap.docs.map(normalizeProfile).filter(isDisplayable)
+}
+
+/** uid 목록으로 공개 프로필을 가져온다 — "팔로잉" 목록 화면에 쓴다 */
+export async function fetchPublicProfilesByIds(uids: string[]): Promise<PublicProfile[]> {
+  const snaps = await Promise.all(uids.map((uid) => getDoc(docRef(db!, 'publicProfiles', uid))))
+  return snaps
+    .filter((snap) => snap.exists())
+    .map((snap) => normalizeProfile(snap))
+    .filter(isDisplayable)
 }
 
 /** 활동 랭킹 실시간 구독 — activityScore 내림차순 */

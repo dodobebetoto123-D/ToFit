@@ -4,7 +4,6 @@ import { Avatar } from '@/components/ui/Avatar'
 import { Icon } from '@/components/ui/Icon'
 import { useAuth } from '@/hooks/useAuth'
 import { cn } from '@/lib/utils'
-import { PRIMARY_NAV } from './nav-items'
 
 export function Header() {
   const { user, signOut } = useAuth()
@@ -14,19 +13,6 @@ export function Header() {
 
   return (
     <header className="tf-header">
-      <nav className="tf-header__nav" aria-label="상단 메뉴">
-        {PRIMARY_NAV.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.to === '/'}
-            className={({ isActive }) => cn('tf-header__link', isActive && 'is-active')}
-          >
-            {item.label}
-          </NavLink>
-        ))}
-      </nav>
-
       <div className="tf-header__tools">
         <form
           className="tf-search"

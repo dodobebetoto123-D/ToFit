@@ -18,9 +18,13 @@ export function subscribeSavedOutfits(uid: string, onChange: (items: SavedOutfit
   return onSnapshot(q, (snap) => onChange(snap.docs.map((d) => d.data() as SavedOutfit)))
 }
 
-export async function addSavedOutfitDoc(uid: string, coordinate: Coordinate): Promise<void> {
+export async function addSavedOutfitDoc(
+  uid: string,
+  coordinate: Coordinate,
+  worn = false,
+): Promise<void> {
   const id = createId('saved')
-  const saved: SavedOutfit = { id, coordinate, savedAt: new Date().toISOString(), worn: false }
+  const saved: SavedOutfit = { id, coordinate, savedAt: new Date().toISOString(), worn }
   await setDoc(doc(savedOutfitsCollection(uid), id), saved)
 }
 
