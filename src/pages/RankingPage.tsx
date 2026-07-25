@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { PostCard } from '@/components/community/PostCard'
+import { PostDetailModal } from '@/components/community/PostDetailModal'
 import { MascotBubble } from '@/components/outfit/MascotBubble'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
@@ -10,6 +11,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useStyleTwins } from '@/hooks/useStyleTwins'
 import { bodyShapeLabel } from '@/lib/labels'
 import { isFirebaseConfigured } from '@/lib/firebase'
+import { avatarColorForUid } from '@/services/firestoreProfile'
 import { subscribePopularPosts } from '@/services/firestoreCommunity'
 import { subscribeActivityRanking } from '@/services/firestoreTwins'
 import type { CommunityPost, PublicProfile, RankingScope } from '@/types'
@@ -41,11 +43,12 @@ function RankBadge({ rank }: { rank: number }) {
 /* ── 1. 커뮤니티 인기 코디 랭킹 ─────────────────────────────── */
 
 function PopularPostsRanking() {
-  const { toggleLike } = useAppData()
+  const { toggleLike, deletePost } = useAppData()
   const { user } = useAuth()
   const [scope, setScope] = useState<RankingScope>('WEEK')
   const [posts, setPosts] = useState<CommunityPost[]>([])
   const [loading, setLoading] = useState(true)
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!isFirebaseConfigured) {
@@ -58,6 +61,8 @@ function PopularPostsRanking() {
       setLoading(false)
     })
   }, [scope, user?.id])
+
+  const selectedPost = selectedPostId ? (posts.find((p) => p.id === selectedPostId) ?? null) : null
 
   return (
     <Card
@@ -75,11 +80,21 @@ function PopularPostsRanking() {
           {posts.map((post, index) => (
             <div key={post.id} className="tf-rankgrid__item">
               <RankBadge rank={index + 1} />
-              <PostCard post={post} onToggleLike={toggleLike} />
+              <PostCard post={post} onToggleLike={toggleLike} onOpen={(p) => setSelectedPostId(p.id)} />
             </div>
           ))}
         </div>
       )}
+
+      <PostDetailModal
+        post={selectedPost}
+        onClose={() => setSelectedPostId(null)}
+        currentUserId={user?.id ?? null}
+        currentUserNickname={user?.nickname ?? ''}
+        currentUserAvatarColor={user ? avatarColorForUid(user.id) : '#a0b1f5'}
+        onToggleLike={toggleLike}
+        onDelete={deletePost}
+      />
     </Card>
   )
 }

@@ -231,32 +231,6 @@
   background: var(--tf-surface-sunken);
 }
 
-/* ── 이메일 인증 배너 ─────────────────────────────────────── */
-.tf-verify-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--tf-sp-3);
-  flex-wrap: wrap;
-  padding: var(--tf-sp-3) var(--tf-sp-8);
-  background: var(--tf-warm-soft);
-  border-bottom: 1px solid var(--tf-line);
-}
-.tf-verify-banner__text {
-  font-size: var(--tf-fs-caption);
-  font-weight: 700;
-  color: var(--tf-warm);
-}
-.tf-verify-banner__msg {
-  font-weight: 500;
-  color: var(--tf-ink-500);
-}
-.tf-verify-banner__actions {
-  display: flex;
-  align-items: center;
-  gap: var(--tf-sp-2);
-}
-
 /* ── Mobile top bar ───────────────────────────────────────── */
 .tf-mobiletop {
   display: none;
@@ -320,9 +294,6 @@
   }
   .tf-shell__content {
     padding: var(--tf-sp-4) var(--tf-sp-4) calc(var(--tf-bottomnav-h) + var(--tf-sp-6));
-  }
-  .tf-verify-banner {
-    padding: var(--tf-sp-2) var(--tf-sp-4);
   }
 }
 

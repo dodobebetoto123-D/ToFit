@@ -14,6 +14,7 @@ import type {
   Coordinate,
   CoordinateSlot,
   MajorCategory,
+  MinorCategory,
   Season,
   Situation,
   StyleTag,
@@ -23,9 +24,13 @@ import type {
 import { minorCategoryLabel, personalColorPalette, situationLabel } from '@/lib/labels'
 import { hashString } from '@/lib/utils'
 
-/** 브랜드+상품명으로 실제 무신사 검색결과 페이지를 연결한다 */
-export function buildBrandSearchUrl(brand: string, name: string): string {
-  const keyword = `${brand} ${name}`.trim()
+/**
+ * 브랜드 + 카테고리로 실제 무신사 검색결과 페이지를 연결한다.
+ * 상품명(name)은 실사용자가 지어낸 예시 이름이라 검색어에 넣으면 일치하는 실제 상품이 없다.
+ * 브랜드명 + 카테고리(예: "COS 재킷")로만 검색해야 실제로 존재하는 상품이 나온다.
+ */
+export function buildBrandSearchUrl(brand: string, minorCategory: MinorCategory): string {
+  const keyword = `${brand} ${minorCategoryLabel[minorCategory]}`.trim()
   return `https://www.musinsa.com/search/goods?keyword=${encodeURIComponent(keyword)}`
 }
 
@@ -202,55 +207,71 @@ function requiredCategories(feelsLike: number): MajorCategory[] {
   return base
 }
 
-/** 옷장에 해당 카테고리가 없을 때 제안할 브랜드 상품 (구매 추천) */
-const BRAND_FALLBACK: Partial<Record<MajorCategory, Omit<CoordinateSlot, 'id' | 'majorCategory'>>> =
-  {
-    TOP: {
-      minorCategory: 'SWEATER',
-      name: '베이직 크루넥 니트',
-      brand: 'MARHEN.J',
-      color: '#efe6d6',
-      colorName: '크림',
-      price: 68000,
-      source: 'BRAND',
-    },
-    BOTTOM: {
-      minorCategory: 'SLACKS',
-      name: '테이퍼드 슬랙스',
-      brand: 'MUSINSA STANDARD',
-      color: '#b8b8b6',
-      colorName: '라이트 그레이',
-      price: 49900,
-      source: 'BRAND',
-    },
-    OUTER: {
-      minorCategory: 'JACKET',
-      name: '오버핏 블레이저',
-      brand: 'COS',
-      color: '#2f3e56',
-      colorName: '네이비',
-      price: 189000,
-      source: 'BRAND',
-    },
-    SHOES: {
-      minorCategory: 'SNEAKERS',
-      name: '스탠다드 스니커즈',
-      brand: 'AFEW',
-      color: '#f2f2f0',
-      colorName: '화이트',
-      price: 89000,
-      source: 'BRAND',
-    },
-    BAG: {
-      minorCategory: 'TOTE_BAG',
-      name: '마멀레이드 토트백',
-      brand: 'MARHEN.J',
-      color: '#d9b98c',
-      colorName: '카멜',
-      price: 79000,
-      source: 'BRAND',
-    },
-  }
+/**
+ * 옷장에 해당 카테고리가 없을 때 제안할 브랜드 상품 (구매 추천).
+ * TPO(situation)별로 다른 아이템을 제안한다 — 옷장이 비어 있으면 대부분의 칸이 이 표에서
+ * 채워지는데, 예전엔 상황과 무관한 고정값 하나뿐이라 TPO를 바꿔도 코디가 그대로였다.
+ */
+const BRAND_FALLBACK: Record<
+  Situation,
+  Partial<Record<MajorCategory, Omit<CoordinateSlot, 'id' | 'majorCategory'>>>
+> = {
+  DAILY: {
+    TOP: { minorCategory: 'T_SHIRT', name: '에어리즘 반팔티', brand: 'UNIQLO', color: '#f2f2f0', colorName: '화이트', price: 19900, source: 'BRAND' },
+    BOTTOM: { minorCategory: 'DENIM', name: '와이드 스트레이트 데님', brand: "LEVI'S", color: '#8ba6cc', colorName: '라이트 블루', price: 89000, source: 'BRAND' },
+    SHOES: { minorCategory: 'SNEAKERS', name: '캔버스 스니커즈', brand: 'CONVERSE', color: '#f2f2f0', colorName: '화이트', price: 69000, source: 'BRAND' },
+    BAG: { minorCategory: 'TOTE_BAG', name: '캔버스 에코백', brand: 'MARHEN.J', color: '#d9b98c', colorName: '카멜', price: 39000, source: 'BRAND' },
+  },
+  CAMPUS: {
+    TOP: { minorCategory: 'HOODIE', name: '오버핏 후디', brand: 'MUSINSA STANDARD', color: '#b8b8b6', colorName: '멜란지 그레이', price: 45900, source: 'BRAND' },
+    BOTTOM: { minorCategory: 'DENIM', name: '스트레이트 데님', brand: 'UNIQLO', color: '#2f3e56', colorName: '진청', price: 49900, source: 'BRAND' },
+    OUTER: { minorCategory: 'JACKET', name: '바시티 재킷', brand: 'NEW BALANCE', color: '#26262a', colorName: '블랙', price: 99000, source: 'BRAND' },
+    SHOES: { minorCategory: 'SNEAKERS', name: '레트로 러닝화', brand: 'NEW BALANCE', color: '#c8b596', colorName: '베이지', price: 129000, source: 'BRAND' },
+    BAG: { minorCategory: 'BACKPACK', name: '클래식 백팩', brand: 'HERSCHEL', color: '#1f2230', colorName: '블랙', price: 89000, source: 'BRAND' },
+  },
+  OFFICE: {
+    TOP: { minorCategory: 'SWEATER', name: '베이직 크루넥 니트', brand: 'MARHEN.J', color: '#efe6d6', colorName: '크림', price: 68000, source: 'BRAND' },
+    BOTTOM: { minorCategory: 'SLACKS', name: '테이퍼드 슬랙스', brand: 'MUSINSA STANDARD', color: '#b8b8b6', colorName: '라이트 그레이', price: 49900, source: 'BRAND' },
+    OUTER: { minorCategory: 'JACKET', name: '오버핏 블레이저', brand: 'COS', color: '#2f3e56', colorName: '네이비', price: 189000, source: 'BRAND' },
+    SHOES: { minorCategory: 'LOAFER', name: '클래식 로퍼', brand: 'CLARKS', color: '#8b6b4a', colorName: '브라운', price: 139000, source: 'BRAND' },
+    BAG: { minorCategory: 'TOTE_BAG', name: '마멀레이드 토트백', brand: 'MARHEN.J', color: '#d9b98c', colorName: '카멜', price: 79000, source: 'BRAND' },
+  },
+  DATE: {
+    TOP: { minorCategory: 'BLOUSE', name: '실크 블라우스', brand: 'ZARA', color: '#efe6d6', colorName: '아이보리', price: 59900, source: 'BRAND' },
+    BOTTOM: { minorCategory: 'SKIRT', name: '플리츠 미디 스커트', brand: 'MUSINSA STANDARD', color: '#3b3b40', colorName: '차콜', price: 45000, source: 'BRAND' },
+    OUTER: { minorCategory: 'COAT', name: '트렌치 코트', brand: 'COS', color: '#c8b596', colorName: '베이지', price: 259000, source: 'BRAND' },
+    SHOES: { minorCategory: 'LOAFER', name: '미들굽 로퍼', brand: 'ZARA', color: '#26262a', colorName: '블랙', price: 79900, source: 'BRAND' },
+    BAG: { minorCategory: 'TOTE_BAG', name: '미니 숄더백', brand: 'CHARLES & KEITH', color: '#a0b1f5', colorName: '라벤더', price: 69000, source: 'BRAND' },
+  },
+  TRAVEL: {
+    TOP: { minorCategory: 'T_SHIRT', name: '에어리즘 반팔티', brand: 'UNIQLO', color: '#b9cbe8', colorName: '스카이 블루', price: 19900, source: 'BRAND' },
+    BOTTOM: { minorCategory: 'SHORTS', name: '트레이닝 조거 반바지', brand: 'ADIDAS', color: '#1f2230', colorName: '블랙', price: 55000, source: 'BRAND' },
+    OUTER: { minorCategory: 'JACKET', name: '경량 바람막이', brand: 'NIKE', color: '#c65f5f', colorName: '레드', price: 89000, source: 'BRAND' },
+    SHOES: { minorCategory: 'SNEAKERS', name: '쿠셔닝 러닝화', brand: 'NIKE', color: '#f2f2f0', colorName: '화이트', price: 139000, source: 'BRAND' },
+    BAG: { minorCategory: 'BACKPACK', name: '트래블 백팩', brand: 'THE NORTH FACE', color: '#2f3e56', colorName: '네이비', price: 119000, source: 'BRAND' },
+  },
+  WORKOUT: {
+    TOP: { minorCategory: 'T_SHIRT', name: '드라이핏 반팔티', brand: 'NIKE', color: '#1f2230', colorName: '블랙', price: 39000, source: 'BRAND' },
+    BOTTOM: { minorCategory: 'SHORTS', name: '트레이닝 조거 팬츠', brand: 'ADIDAS', color: '#6f7076', colorName: '그레이', price: 59000, source: 'BRAND' },
+    OUTER: { minorCategory: 'JACKET', name: '윈드브레이커', brand: 'NIKE', color: '#26262a', colorName: '블랙', price: 99000, source: 'BRAND' },
+    SHOES: { minorCategory: 'SNEAKERS', name: '러닝화', brand: 'ADIDAS', color: '#f2f2f0', colorName: '화이트', price: 119000, source: 'BRAND' },
+    BAG: { minorCategory: 'BACKPACK', name: '스포츠 백팩', brand: 'NIKE', color: '#1f2230', colorName: '블랙', price: 59000, source: 'BRAND' },
+  },
+  PARTY: {
+    TOP: { minorCategory: 'SHIRT', name: '새틴 셔츠', brand: 'ZARA', color: '#1c1c1f', colorName: '블랙', price: 49900, source: 'BRAND' },
+    BOTTOM: { minorCategory: 'SLACKS', name: '슬림 슬랙스', brand: 'MUSINSA STANDARD', color: '#1c1c1f', colorName: '블랙', price: 55000, source: 'BRAND' },
+    OUTER: { minorCategory: 'JACKET', name: '레더 재킷', brand: 'ZARA', color: '#26262a', colorName: '블랙', price: 159000, source: 'BRAND' },
+    SHOES: { minorCategory: 'BOOTS', name: '첼시 부츠', brand: 'DR. MARTENS', color: '#26262a', colorName: '블랙', price: 259000, source: 'BRAND' },
+    BAG: { minorCategory: 'TOTE_BAG', name: '클러치백', brand: 'CHARLES & KEITH', color: '#1c1c1f', colorName: '블랙', price: 59000, source: 'BRAND' },
+  },
+  WEDDING: {
+    TOP: { minorCategory: 'SHIRT', name: '베이직 셔츠', brand: 'COS', color: '#f2f2f0', colorName: '화이트', price: 79000, source: 'BRAND' },
+    BOTTOM: { minorCategory: 'SLACKS', name: '슬랙스', brand: 'MUSINSA STANDARD', color: '#1c1c1f', colorName: '블랙', price: 55000, source: 'BRAND' },
+    OUTER: { minorCategory: 'JACKET', name: '테일러드 재킷', brand: 'ZARA', color: '#1f2230', colorName: '네이비', price: 179000, source: 'BRAND' },
+    SHOES: { minorCategory: 'LOAFER', name: '더비 슈즈', brand: 'CLARKS', color: '#1c1c1f', colorName: '블랙', price: 149000, source: 'BRAND' },
+    BAG: { minorCategory: 'TOTE_BAG', name: '미니 숄더백', brand: 'MARHEN.J', color: '#1c1c1f', colorName: '블랙', price: 89000, source: 'BRAND' },
+  },
+}
 
 export interface RecommendOptions {
   closet: ClothingItem[]
@@ -310,7 +331,7 @@ export function recommendCoordinate(options: RecommendOptions): RecommendResult 
 
     if (closetOnly) continue
 
-    const fallback = BRAND_FALLBACK[category]
+    const fallback = BRAND_FALLBACK[situation]?.[category]
     if (fallback) {
       filledByBrand.push(category)
       slots.push({
@@ -318,7 +339,7 @@ export function recommendCoordinate(options: RecommendOptions): RecommendResult 
         majorCategory: category,
         ...fallback,
         discountRate: estimateDiscountRate(fallback.brand, fallback.name),
-        searchUrl: buildBrandSearchUrl(fallback.brand, fallback.name),
+        searchUrl: buildBrandSearchUrl(fallback.brand, fallback.minorCategory),
       })
     }
   }

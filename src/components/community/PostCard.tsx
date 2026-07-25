@@ -7,14 +7,20 @@ import { PostPhoto } from './PostPhoto'
 interface PostCardProps {
   post: CommunityPost
   onToggleLike: (postId: string) => void
+  onOpen?: (post: CommunityPost) => void
 }
 
-export function PostCard({ post, onToggleLike }: PostCardProps) {
+export function PostCard({ post, onToggleLike, onOpen }: PostCardProps) {
   return (
     <article className="tf-postcard">
-      <div className="tf-postcard__media">
+      <button
+        type="button"
+        className="tf-postcard__media"
+        onClick={() => onOpen?.(post)}
+        aria-label={`${post.title} 게시글 열기`}
+      >
         <PostPhoto theme={post.outfitPhotoTheme} />
-      </div>
+      </button>
 
       <div className="tf-postcard__body">
         <div className="tf-postcard__author">
@@ -22,6 +28,11 @@ export function PostCard({ post, onToggleLike }: PostCardProps) {
           <span className="tf-postcard__nickname tf-truncate">{post.authorNickname}</span>
           <span className="tf-micro">{fromNow(post.createdAt)}</span>
         </div>
+
+        <button type="button" className="tf-postcard__titlebtn" onClick={() => onOpen?.(post)}>
+          <p className="tf-postcard__title tf-truncate">{post.title}</p>
+          <p className="tf-postcard__excerpt">{post.content}</p>
+        </button>
 
         <p className="tf-postcard__tags tf-truncate">
           {post.hashtags.map((tag) => `#${tag}`).join(' ')}
@@ -38,10 +49,15 @@ export function PostCard({ post, onToggleLike }: PostCardProps) {
             <Icon name={post.liked ? 'heart-filled' : 'heart'} size={15} />
             {post.likeCount}
           </button>
-          <span className="tf-stat" aria-label={`댓글 ${post.commentCount}개`}>
+          <button
+            type="button"
+            className="tf-stat"
+            onClick={() => onOpen?.(post)}
+            aria-label={`댓글 ${post.commentCount}개 보기`}
+          >
             <Icon name="comment" size={15} />
             {post.commentCount}
-          </span>
+          </button>
         </div>
       </div>
     </article>

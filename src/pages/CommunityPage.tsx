@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { CreatePostDialog } from '@/components/community/CreatePostDialog'
 import { PostCard } from '@/components/community/PostCard'
+import { PostDetailModal } from '@/components/community/PostDetailModal'
 import { MascotBubble } from '@/components/outfit/MascotBubble'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
@@ -25,14 +26,18 @@ const SORTS: ReadonlyArray<SegmentedOption<SortKey>> = [
 
 export function CommunityPage() {
   const { user } = useAuth()
-  const { posts, postsLoading, toggleLike, createPost } = useAppData()
+  const { posts, postsLoading, toggleLike, createPost, deletePost } = useAppData()
   const { twins, loading: twinsLoading, toggleFollow } = useStyleTwins()
   const [searchParams, setSearchParams] = useSearchParams()
 
   const [sort, setSort] = useState<SortKey>('POPULAR')
   const [activeTag, setActiveTag] = useState<string | null>(null)
   const [composerOpen, setComposerOpen] = useState(false)
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
   const query = searchParams.get('q') ?? ''
+
+  // 목록(posts)이 실시간으로 갱신되므로, 선택된 글도 스냅샷이 아니라 최신 상태를 그대로 참조한다.
+  const selectedPost = selectedPostId ? (posts.find((p) => p.id === selectedPostId) ?? null) : null
 
   const allTags = useMemo(() => {
     const counts = new Map<string, number>()
@@ -126,7 +131,12 @@ export function CommunityPage() {
           ) : (
             <div className="tf-grid tf-grid--posts-lg tf-stagger">
               {visible.map((post) => (
-                <PostCard key={post.id} post={post} onToggleLike={toggleLike} />
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  onToggleLike={toggleLike}
+                  onOpen={(p) => setSelectedPostId(p.id)}
+                />
               ))}
             </div>
           )}
@@ -182,6 +192,16 @@ export function CommunityPage() {
           authorAvatarColor={avatarColorForUid(user.id)}
         />
       )}
+
+      <PostDetailModal
+        post={selectedPost}
+        onClose={() => setSelectedPostId(null)}
+        currentUserId={user?.id ?? null}
+        currentUserNickname={user?.nickname ?? ''}
+        currentUserAvatarColor={user ? avatarColorForUid(user.id) : '#a0b1f5'}
+        onToggleLike={toggleLike}
+        onDelete={deletePost}
+      />
     </div>
   )
 }

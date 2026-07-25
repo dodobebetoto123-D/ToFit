@@ -1,6 +1,5 @@
 import { Outlet, useLocation } from 'react-router-dom'
 import { BottomNav } from './BottomNav'
-import { EmailVerificationBanner } from './EmailVerificationBanner'
 import { Header } from './Header'
 import { MobileTopBar } from './MobileTopBar'
 import { Sidebar } from './Sidebar'
@@ -14,7 +13,6 @@ export function AppLayout() {
       <div className="tf-shell__main">
         <Header />
         <MobileTopBar />
-        <EmailVerificationBanner />
         {/* key 로 경로가 바뀔 때마다 리마운트 → ⑤ page 프리셋 등장 모션이 매번 재생된다 */}
         <main className="tf-shell__content" key={pathname}>
           <Outlet />

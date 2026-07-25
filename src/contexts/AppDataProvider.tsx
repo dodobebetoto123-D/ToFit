@@ -9,7 +9,12 @@ import {
   subscribeCloset,
   updateClothingItemDoc,
 } from '@/services/firestoreCloset'
-import { createPostDoc, subscribePosts, toggleLikeDoc } from '@/services/firestoreCommunity'
+import {
+  createPostDoc,
+  deletePostDoc,
+  subscribePosts,
+  toggleLikeDoc,
+} from '@/services/firestoreCommunity'
 import {
   addFeedbackDoc,
   addSavedOutfitDoc,
@@ -218,6 +223,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [uid, posts],
   )
 
+  const deletePost = useCallback((postId: string) => {
+    void deletePostDoc(postId)
+  }, [])
+
   /* ── 추천 횟수 제한 ───────────────────────────────────────── */
 
   const consumeRecommendation = useCallback(() => {
@@ -253,6 +262,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       postsLoading,
       createPost,
       toggleLike,
+      deletePost,
       remainingRecommendations,
       consumeRecommendation,
     }),
@@ -274,6 +284,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       postsLoading,
       createPost,
       toggleLike,
+      deletePost,
       remainingRecommendations,
       consumeRecommendation,
     ],

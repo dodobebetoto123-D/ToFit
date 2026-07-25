@@ -19,7 +19,8 @@ import {
 } from '@/lib/labels'
 import { cn, formatPrice } from '@/lib/utils'
 import { seasonForTemperature } from '@/services/recommend'
-import { FEEDBACK_TAGS, SITUATIONS, type FeedbackTag, type Situation } from '@/types'
+import { trackRecentlyViewed } from '@/services/firestoreRecentlyViewed'
+import { FEEDBACK_TAGS, SITUATIONS, type CoordinateSlot, type FeedbackTag, type Situation } from '@/types'
 
 export function RecommendPage() {
   const { user } = useAuth()
@@ -78,6 +79,21 @@ export function RecommendPage() {
     if (rating === 0 || !coordinate) return
     addFeedback({ outfitId: coordinate.id, rating, tags: feedbackTags })
     setFeedbackDone(true)
+  }
+
+  function handleBrandItemClick(slot: CoordinateSlot) {
+    if (!user || !slot.searchUrl || slot.price === undefined) return
+    void trackRecentlyViewed(user.id, {
+      name: slot.name,
+      brand: slot.brand,
+      color: slot.color,
+      colorName: slot.colorName,
+      majorCategory: slot.majorCategory,
+      minorCategory: slot.minorCategory,
+      price: slot.price,
+      discountRate: slot.discountRate,
+      searchUrl: slot.searchUrl,
+    })
   }
 
   return (
@@ -294,6 +310,7 @@ export function RecommendPage() {
                   rel="noopener noreferrer"
                   variant="soft"
                   size="sm"
+                  onClick={() => handleBrandItemClick(slot)}
                 >
                   검색결과 보기
                 </Button>

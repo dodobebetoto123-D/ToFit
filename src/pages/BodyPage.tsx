@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { PersonalColorQuiz } from '@/components/body/PersonalColorQuiz'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Chip } from '@/components/ui/Chip'
@@ -14,6 +15,8 @@ import {
 } from '@/lib/labels'
 import { cn } from '@/lib/utils'
 import { BODY_SHAPES, PERSONAL_COLORS, type BodyShape, type PersonalColor } from '@/types'
+
+
 
 /** 체형별 추천 · 피하면 좋은 실루엣 */
 const BODY_TIPS: Record<BodyShape, { good: string[]; avoid: string[] }> = {
@@ -42,6 +45,7 @@ export function BodyPage() {
   const [personalColor, setPersonalColor] = useState<PersonalColor>(
     user?.personalColor ?? 'SUMMER_COOL',
   )
+  const [quizOpen, setQuizOpen] = useState(false)
 
   /** 옷장 아이템 중 퍼스널 컬러 팔레트에 가까운 비율 */
   const paletteFit = useMemo(() => {
@@ -72,6 +76,11 @@ export function BodyPage() {
   function save() {
     void updateProfile({ height, weight, bodyShape, personalColor, colorPalette: personalColorPalette[personalColor] })
     setEditing(false)
+  }
+
+  function handleQuizComplete(color: PersonalColor) {
+    setPersonalColor(color)
+    void updateProfile({ personalColor: color, colorPalette: personalColorPalette[color] })
   }
 
   return (
@@ -165,7 +174,16 @@ export function BodyPage() {
           )}
         </Card>
 
-        <Card className="tf-reveal" icon="🎨" title="퍼스널 컬러">
+        <Card
+          className="tf-reveal"
+          icon="🎨"
+          title="퍼스널 컬러"
+          action={
+            <Button size="sm" variant="soft" onClick={() => setQuizOpen(true)}>
+              자가진단 하기
+            </Button>
+          }
+        >
           <p className="tf-subtitle">{personalColorLabel[user.personalColor]}</p>
           <div className="tf-palette tf-palette--lg">
             {personalColorPalette[user.personalColor].map((color) => (
@@ -240,6 +258,12 @@ export function BodyPage() {
           })}
         </ul>
       </Card>
+
+      <PersonalColorQuiz
+        open={quizOpen}
+        onClose={() => setQuizOpen(false)}
+        onComplete={handleQuizComplete}
+      />
     </div>
   )
 }

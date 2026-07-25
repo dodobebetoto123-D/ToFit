@@ -279,6 +279,31 @@ export interface CommunityPost {
   createdAt: string
 }
 
+export interface PostComment {
+  id: string
+  postId: string
+  authorId: string
+  authorNickname: string
+  authorAvatarColor: string
+  content: string
+  createdAt: string
+}
+
+/** 브랜드 검색 결과에서 실제로 눌러본 상품 — "최근 본 상품" 페이지에 쓰인다 */
+export interface RecentlyViewedItem {
+  id: string
+  name: string
+  brand: string
+  color: string
+  colorName: string
+  majorCategory: MajorCategory
+  minorCategory: MinorCategory
+  price?: number
+  discountRate?: number
+  searchUrl: string
+  viewedAt: string
+}
+
 /** 실사 이미지 대신 쓰는 일러스트 프리셋 (에셋 연결 전까지 사용) */
 export const OUTFIT_PHOTO_THEMES = [
   'STREET_DAY',

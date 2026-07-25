@@ -28,6 +28,8 @@ export interface AppDataContextValue {
     >,
   ) => void
   toggleLike: (postId: string) => void
+  /** 작성자 본인 글만 삭제된다 (Firestore 보안 규칙으로도 강제) */
+  deletePost: (postId: string) => void
 
   /** 오늘 남은 무료 추천 횟수 (수익 모델: 일 2회 제한) */
   remainingRecommendations: number

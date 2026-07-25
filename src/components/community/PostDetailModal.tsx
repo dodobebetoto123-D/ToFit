@@ -1,0 +1,181 @@
+import { useEffect, useRef, useState } from 'react'
+import { Avatar } from '@/components/ui/Avatar'
+import { Button } from '@/components/ui/Button'
+import { Icon } from '@/components/ui/Icon'
+import { fromNow } from '@/lib/utils'
+import {
+  addCommentDoc,
+  deleteCommentDoc,
+  incrementPostViewCount,
+  subscribeComments,
+} from '@/services/firestoreCommunity'
+import type { CommunityPost, PostComment } from '@/types'
+import { PostPhoto } from './PostPhoto'
+
+interface PostDetailModalProps {
+  post: CommunityPost | null
+  onClose: () => void
+  currentUserId: string | null
+  currentUserNickname: string
+  currentUserAvatarColor: string
+  onToggleLike: (postId: string) => void
+  onDelete: (postId: string) => void
+}
+
+export function PostDetailModal({
+  post,
+  onClose,
+  currentUserId,
+  currentUserNickname,
+  currentUserAvatarColor,
+  onToggleLike,
+  onDelete,
+}: PostDetailModalProps) {
+  const dialogRef = useRef<HTMLDialogElement>(null)
+  const [comments, setComments] = useState<PostComment[]>([])
+  const [commentText, setCommentText] = useState('')
+  const [posting, setPosting] = useState(false)
+
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (!dialog) return
+    if (post && !dialog.open) dialog.showModal()
+    if (!post && dialog.open) dialog.close()
+  }, [post])
+
+  useEffect(() => {
+    if (!post) {
+      setComments([])
+      return
+    }
+    void incrementPostViewCount(post.id)
+    return subscribeComments(post.id, setComments)
+  }, [post])
+
+  if (!post) {
+    return <dialog ref={dialogRef} className="tf-dialog" onCancel={onClose} onClose={onClose} />
+  }
+
+  const isAuthor = currentUserId === post.authorId
+
+  async function handleAddComment() {
+    if (!post || !currentUserId || !commentText.trim()) return
+    setPosting(true)
+    try {
+      await addCommentDoc(post.id, {
+        authorId: currentUserId,
+        authorNickname: currentUserNickname,
+        authorAvatarColor: currentUserAvatarColor,
+        content: commentText.trim(),
+      })
+      setCommentText('')
+    } finally {
+      setPosting(false)
+    }
+  }
+
+  function handleDeleteComment(commentId: string) {
+    if (!post) return
+    void deleteCommentDoc(post.id, commentId)
+  }
+
+  function handleDeletePost() {
+    if (!post) return
+    if (!window.confirm('이 글을 삭제할까요? 되돌릴 수 없어요.')) return
+    onDelete(post.id)
+    onClose()
+  }
+
+  return (
+    <dialog ref={dialogRef} className="tf-dialog tf-postdetail" onCancel={onClose} onClose={onClose}>
+      <header className="tf-dialog__head">
+        <h2 className="tf-title">게시글</h2>
+        <button type="button" className="tf-icon-btn" onClick={onClose} aria-label="닫기">
+          <Icon name="close" size={19} />
+        </button>
+      </header>
+
+      <div className="tf-dialog__body">
+        <div className="tf-postdetail__media">
+          <PostPhoto theme={post.outfitPhotoTheme} />
+        </div>
+
+        <div className="tf-postdetail__author">
+          <Avatar nickname={post.authorNickname} color={post.authorAvatarColor} size={32} />
+          <div className="tf-postdetail__author-info">
+            <p className="tf-postcard__nickname">{post.authorNickname}</p>
+            <p className="tf-micro">{fromNow(post.createdAt)} · 조회 {post.viewCount}</p>
+          </div>
+          {isAuthor && (
+            <Button variant="ghost" size="sm" onClick={handleDeletePost}>
+              삭제
+            </Button>
+          )}
+        </div>
+
+        <h3 className="tf-postdetail__title">{post.title}</h3>
+        <p className="tf-postdetail__content">{post.content}</p>
+        <p className="tf-postcard__tags">{post.hashtags.map((tag) => `#${tag}`).join(' ')}</p>
+
+        <button
+          type="button"
+          className="tf-stat tf-postdetail__like"
+          onClick={() => onToggleLike(post.id)}
+          aria-pressed={post.liked}
+        >
+          <Icon name={post.liked ? 'heart-filled' : 'heart'} size={17} />
+          좋아요 {post.likeCount}
+        </button>
+
+        <div className="tf-postdetail__comments">
+          <h4 className="tf-subtitle">댓글 {comments.length}</h4>
+          {comments.length === 0 ? (
+            <p className="tf-caption">아직 댓글이 없어요. 첫 댓글을 남겨보세요.</p>
+          ) : (
+            <ul className="tf-commentlist">
+              {comments.map((comment) => (
+                <li key={comment.id} className="tf-comment">
+                  <Avatar nickname={comment.authorNickname} color={comment.authorAvatarColor} size={26} />
+                  <div className="tf-comment__body">
+                    <p className="tf-comment__meta">
+                      <span className="tf-comment__nickname">{comment.authorNickname}</span>
+                      <span className="tf-micro">{fromNow(comment.createdAt)}</span>
+                    </p>
+                    <p className="tf-comment__content">{comment.content}</p>
+                  </div>
+                  {(currentUserId === comment.authorId || isAuthor) && (
+                    <button
+                      type="button"
+                      className="tf-icon-btn tf-comment__delete"
+                      onClick={() => handleDeleteComment(comment.id)}
+                      aria-label="댓글 삭제"
+                    >
+                      <Icon name="close" size={14} />
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {currentUserId && (
+            <div className="tf-comment-form">
+              <input
+                className="tf-input"
+                value={commentText}
+                onChange={(event) => setCommentText(event.target.value)}
+                placeholder="댓글을 남겨보세요"
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') void handleAddComment()
+                }}
+              />
+              <Button size="sm" onClick={handleAddComment} disabled={posting || !commentText.trim()}>
+                등록
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+    </dialog>
+  )
+}

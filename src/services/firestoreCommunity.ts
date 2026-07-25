@@ -5,6 +5,7 @@ import {
   arrayRemove,
   arrayUnion,
   collection,
+  deleteDoc,
   doc,
   increment,
   limit as fsLimit,
@@ -17,12 +18,16 @@ import {
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { createId } from '@/lib/utils'
-import type { CommunityPost, RankingScope } from '@/types'
+import type { CommunityPost, PostComment, RankingScope } from '@/types'
 
 interface RawPost extends Omit<CommunityPost, 'liked'> {}
 
 function postsCollection() {
   return collection(db!, 'posts')
+}
+
+function commentsCollection(postId: string) {
+  return collection(db!, 'posts', postId, 'comments')
 }
 
 function toPost(raw: RawPost, myUid: string | null): CommunityPost {
@@ -91,4 +96,36 @@ export async function toggleLikeDoc(postId: string, uid: string, currentlyLiked:
     likedBy: currentlyLiked ? arrayRemove(uid) : arrayUnion(uid),
     likeCount: increment(currentlyLiked ? -1 : 1),
   })
+}
+
+export async function deletePostDoc(postId: string): Promise<void> {
+  await deleteDoc(doc(postsCollection(), postId))
+}
+
+export async function incrementPostViewCount(postId: string): Promise<void> {
+  await updateDoc(doc(postsCollection(), postId), { viewCount: increment(1) })
+}
+
+/* ─────────────────────────────────────────────────────────────
+   댓글
+   ───────────────────────────────────────────────────────────── */
+
+export function subscribeComments(postId: string, onChange: (comments: PostComment[]) => void) {
+  const q = query(commentsCollection(postId), orderBy('createdAt', 'asc'))
+  return onSnapshot(q, (snap) => onChange(snap.docs.map((d) => d.data() as PostComment)))
+}
+
+export async function addCommentDoc(
+  postId: string,
+  comment: Omit<PostComment, 'id' | 'postId' | 'createdAt'>,
+): Promise<void> {
+  const id = createId('comment')
+  const full: PostComment = { ...comment, id, postId, createdAt: new Date().toISOString() }
+  await setDoc(doc(commentsCollection(postId), id), full)
+  await updateDoc(doc(postsCollection(), postId), { commentCount: increment(1) })
+}
+
+export async function deleteCommentDoc(postId: string, commentId: string): Promise<void> {
+  await deleteDoc(doc(commentsCollection(postId), commentId))
+  await updateDoc(doc(postsCollection(), postId), { commentCount: increment(-1) })
 }
