@@ -1,0 +1,124 @@
+/* =============================================================
+   ToFit — 디자인 토큰
+   기준 컬러: #a0b1f5 (primary) / #f5f5f5 (surface)
+   ============================================================= */
+
+:root {
+  color-scheme: light;
+
+  /* ── 컬러 ────────────────────────────────────────────────── */
+  --tf-primary-50: #f4f6fe;
+  --tf-primary-100: #e9edfd;
+  --tf-primary-200: #d4dcfb;
+  --tf-primary-300: #bcc8f8;
+  --tf-primary-400: #a0b1f5; /* 브랜드 기준색 */
+  --tf-primary-500: #8698ea;
+  --tf-primary-600: #6c7fd8;
+  --tf-primary-700: #5566bb;
+  --tf-primary-800: #3e4c8c;
+
+  --tf-surface: #f5f5f5; /* 브랜드 기준 배경색 */
+  --tf-surface-sunken: #ededf0;
+  --tf-card: #ffffff;
+
+  --tf-ink-900: #1f2230;
+  --tf-ink-700: #3d4254;
+  --tf-ink-500: #6b7185;
+  --tf-ink-300: #9aa0b4;
+  --tf-ink-200: #c7cbd6;
+  --tf-line: #eaeaef;
+  --tf-line-strong: #dcdce4;
+
+  /* 의미색 — 채도를 낮춰 브랜드 톤과 충돌하지 않게 한다 */
+  --tf-warm: #e8a765;
+  --tf-warm-soft: #fdf1e3;
+  --tf-cool: #7cb0ec;
+  --tf-cool-soft: #e8f2fd;
+  --tf-like: #f4738a;
+  --tf-like-soft: #fdecef;
+  --tf-mint: #6fc9b8;
+  --tf-mint-soft: #e6f7f4;
+
+  /* ── 타이포 ──────────────────────────────────────────────── */
+  --tf-font: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
+    'Apple SD Gothic Neo', 'Segoe UI', 'Malgun Gothic', 'Noto Sans KR', system-ui, sans-serif;
+
+  --tf-fs-display: 1.625rem; /* 26px */
+  --tf-fs-title: 1.125rem; /* 18px */
+  --tf-fs-subtitle: 1rem; /* 16px */
+  --tf-fs-body: 0.875rem; /* 14px */
+  --tf-fs-caption: 0.8125rem; /* 13px */
+  --tf-fs-micro: 0.6875rem; /* 11px */
+
+  /* ── 라운드 ──────────────────────────────────────────────── */
+  --tf-r-xs: 8px;
+  --tf-r-sm: 12px;
+  --tf-r-md: 16px;
+  --tf-r-lg: 20px;
+  --tf-r-xl: 26px;
+  --tf-r-pill: 999px;
+
+  /* ── 그림자 (낮은 대비의 부드러운 그림자만 사용) ─────────── */
+  --tf-shadow-1: 0 1px 2px rgba(31, 34, 48, 0.04);
+  --tf-shadow-2: 0 2px 10px rgba(31, 34, 48, 0.05);
+  --tf-shadow-3: 0 8px 24px rgba(31, 34, 48, 0.07);
+  --tf-shadow-brand: 0 8px 20px rgba(108, 127, 216, 0.28);
+
+  /* ── 간격 ────────────────────────────────────────────────── */
+  --tf-sp-1: 4px;
+  --tf-sp-2: 8px;
+  --tf-sp-3: 12px;
+  --tf-sp-4: 16px;
+  --tf-sp-5: 20px;
+  --tf-sp-6: 24px;
+  --tf-sp-8: 32px;
+  --tf-sp-10: 40px;
+
+  /* ── 레이아웃 ────────────────────────────────────────────── */
+  --tf-sidebar-w: 208px;
+  --tf-header-h: 64px;
+  --tf-bottomnav-h: 62px;
+  --tf-content-max: 1400px;
+
+  /* =============================================================
+     모션 시스템
+     -------------------------------------------------------------
+     같은 "역할"의 인터랙션에는 반드시 같은 (duration, ease) 짝을 쓴다.
+     새 컴포넌트를 만들 때 아래 5가지 프리셋 중 하나를 고르고,
+     개별 값을 임의로 지정하지 않는다.
+
+       ① press   → --tf-t-press   : 눌림 피드백 (버튼·카드 탭)
+       ② hover   → --tf-t-hover   : 색/그림자만 바뀌는 상태 전환
+       ③ select  → --tf-t-select  : 선택·토글 (칩, 탭, 스위치)
+       ④ reveal  → --tf-t-reveal  : 요소 등장 (카드, 리스트 아이템)
+       ⑤ page    → --tf-t-page    : 화면 전환
+
+     ease 4종은 이 파일 밖에서 새로 정의하지 않는다.
+     ============================================================= */
+  --tf-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --tf-ease-entrance: cubic-bezier(0.16, 1, 0.3, 1);
+  --tf-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --tf-ease-emphasis: cubic-bezier(0.34, 1.26, 0.64, 1);
+
+  --tf-dur-1: 90ms;
+  --tf-dur-2: 170ms;
+  --tf-dur-3: 240ms;
+  --tf-dur-4: 380ms;
+  --tf-dur-5: 520ms;
+
+  --tf-t-press: transform var(--tf-dur-1) var(--tf-ease-emphasis);
+  --tf-t-hover: background-color var(--tf-dur-2) var(--tf-ease-standard),
+    border-color var(--tf-dur-2) var(--tf-ease-standard),
+    color var(--tf-dur-2) var(--tf-ease-standard),
+    box-shadow var(--tf-dur-2) var(--tf-ease-standard),
+    opacity var(--tf-dur-2) var(--tf-ease-standard);
+  --tf-t-select: background-color var(--tf-dur-3) var(--tf-ease-emphasis),
+    border-color var(--tf-dur-3) var(--tf-ease-emphasis),
+    color var(--tf-dur-3) var(--tf-ease-emphasis),
+    transform var(--tf-dur-3) var(--tf-ease-emphasis),
+    box-shadow var(--tf-dur-3) var(--tf-ease-emphasis);
+  --tf-t-reveal: opacity var(--tf-dur-4) var(--tf-ease-entrance),
+    transform var(--tf-dur-4) var(--tf-ease-entrance);
+  --tf-t-page: opacity var(--tf-dur-5) var(--tf-ease-entrance),
+    transform var(--tf-dur-5) var(--tf-ease-entrance);
+}

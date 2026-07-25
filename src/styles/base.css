@@ -1,0 +1,230 @@
+/* =============================================================
+   ToFit — 리셋 & 기본 타이포그래피
+   ============================================================= */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--tf-surface);
+  color: var(--tf-ink-900);
+  font-family: var(--tf-font);
+  font-size: var(--tf-fs-body);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+figure {
+  margin: 0;
+}
+
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--tf-primary-500);
+  outline-offset: 2px;
+  border-radius: var(--tf-r-xs);
+}
+
+/* 스크롤바 — 브랜드 톤에 맞춘 얇은 형태 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--tf-ink-200) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--tf-ink-200);
+  border-radius: var(--tf-r-pill);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ── 공통 텍스트 유틸 ─────────────────────────────────────── */
+.tf-display {
+  font-size: var(--tf-fs-display);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+.tf-title {
+  font-size: var(--tf-fs-title);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+.tf-subtitle {
+  font-size: var(--tf-fs-subtitle);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.tf-body {
+  font-size: var(--tf-fs-body);
+}
+.tf-caption {
+  font-size: var(--tf-fs-caption);
+  color: var(--tf-ink-500);
+}
+.tf-micro {
+  font-size: var(--tf-fs-micro);
+  color: var(--tf-ink-300);
+}
+.tf-muted {
+  color: var(--tf-ink-500);
+}
+.tf-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tf-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── 등장 애니메이션 (④ reveal 프리셋과 동일한 ease) ──────── */
+@keyframes tf-reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes tf-reveal-scale {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes tf-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes tf-shimmer {
+  from {
+    background-position: 180% 0;
+  }
+  to {
+    background-position: -80% 0;
+  }
+}
+
+.tf-reveal {
+  animation: tf-reveal-up var(--tf-dur-4) var(--tf-ease-entrance) both;
+}
+
+/* 리스트 스태거 — 같은 그룹 안에서는 항상 40ms 간격을 유지한다 */
+.tf-stagger > * {
+  animation: tf-reveal-up var(--tf-dur-4) var(--tf-ease-entrance) both;
+}
+.tf-stagger > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.tf-stagger > *:nth-child(2) {
+  animation-delay: 40ms;
+}
+.tf-stagger > *:nth-child(3) {
+  animation-delay: 80ms;
+}
+.tf-stagger > *:nth-child(4) {
+  animation-delay: 120ms;
+}
+.tf-stagger > *:nth-child(5) {
+  animation-delay: 160ms;
+}
+.tf-stagger > *:nth-child(6) {
+  animation-delay: 200ms;
+}
+.tf-stagger > *:nth-child(7) {
+  animation-delay: 240ms;
+}
+.tf-stagger > *:nth-child(8) {
+  animation-delay: 280ms;
+}
+.tf-stagger > *:nth-child(n + 9) {
+  animation-delay: 320ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
