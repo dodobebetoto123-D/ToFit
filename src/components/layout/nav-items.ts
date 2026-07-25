@@ -13,6 +13,7 @@ export const PRIMARY_NAV: NavItem[] = [
   { to: '/recommend', label: '코디 추천', icon: 'sparkle' },
   { to: '/body', label: '체형 맞춤', icon: 'body' },
   { to: '/community', label: '커뮤니티', icon: 'community' },
+  { to: '/ranking', label: '랭킹', icon: 'trophy' },
 ]
 
 /** PC 사이드바 보조 메뉴 */
@@ -34,4 +35,5 @@ export const MOBILE_NAV: NavItem[] = [
   { to: '/closet', label: '옷장', icon: 'closet' },
   { to: '/recommend', label: '추천', icon: 'sparkle' },
   { to: '/community', label: '커뮤니티', icon: 'community' },
+  { to: '/ranking', label: '랭킹', icon: 'trophy' },
 ]

@@ -8,7 +8,7 @@
  */
 import { getApp, getApps, initializeApp, type FirebaseApp } from 'firebase/app'
 import { getAuth, type Auth } from 'firebase/auth'
-import { getFirestore, type Firestore } from 'firebase/firestore'
+import { initializeFirestore, type Firestore } from 'firebase/firestore'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -30,7 +30,9 @@ let dbInstance: Firestore | null = null
 if (isFirebaseConfigured) {
   app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig)
   authInstance = getAuth(app)
-  dbInstance = getFirestore(app)
+  // ClothingItem.price 같은 선택 필드가 undefined일 때 Firestore가 기본적으로 setDoc을 거부한다.
+  // ignoreUndefinedProperties로 그런 필드를 자동으로 제외하게 한다.
+  dbInstance = initializeFirestore(app, { ignoreUndefinedProperties: true })
 } else if (import.meta.env.DEV) {
   console.info(
     '[ToFit] VITE_FIREBASE_* 환경 변수가 없어 Firebase 없이 목업 데이터로 실행합니다. ' +

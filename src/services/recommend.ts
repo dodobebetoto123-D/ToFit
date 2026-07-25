@@ -21,6 +21,22 @@ import type {
   WeatherSnapshot,
 } from '@/types'
 import { minorCategoryLabel, personalColorPalette, situationLabel } from '@/lib/labels'
+import { hashString } from '@/lib/utils'
+
+/** 브랜드+상품명으로 실제 무신사 검색결과 페이지를 연결한다 */
+export function buildBrandSearchUrl(brand: string, name: string): string {
+  const keyword = `${brand} ${name}`.trim()
+  return `https://www.musinsa.com/search/goods?keyword=${encodeURIComponent(keyword)}`
+}
+
+/**
+ * 실시간 가격 API가 없어 할인율은 추정치다 — 아이템별로 안정적인 값이 나오도록
+ * 이름을 해시해 5~30% 사이로 결정한다. UI에는 항상 "추정 할인율"로 표기한다.
+ */
+export function estimateDiscountRate(brand: string, name: string): number {
+  const hash = Math.abs(hashString(`${brand}_${name}`))
+  return 0.05 + (hash % 26) / 100
+}
 
 /** TPO별로 선호하는 스타일 태그와 격식 수준(0 캐주얼 ~ 1 포멀) */
 const SITUATION_PROFILE: Record<Situation, { styles: StyleTag[]; formality: number }> = {
@@ -297,7 +313,13 @@ export function recommendCoordinate(options: RecommendOptions): RecommendResult 
     const fallback = BRAND_FALLBACK[category]
     if (fallback) {
       filledByBrand.push(category)
-      slots.push({ id: `slot_brand_${category}`, majorCategory: category, ...fallback })
+      slots.push({
+        id: `slot_brand_${category}`,
+        majorCategory: category,
+        ...fallback,
+        discountRate: estimateDiscountRate(fallback.brand, fallback.name),
+        searchUrl: buildBrandSearchUrl(fallback.brand, fallback.name),
+      })
     }
   }
 

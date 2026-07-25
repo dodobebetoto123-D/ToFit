@@ -11,6 +11,7 @@ import { HomePage } from '@/pages/HomePage'
 import { LoginPage } from '@/pages/LoginPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { OnboardingPage } from '@/pages/OnboardingPage'
+import { RankingPage } from '@/pages/RankingPage'
 import { RecommendPage } from '@/pages/RecommendPage'
 import { SavedPage } from '@/pages/SavedPage'
 
@@ -31,6 +32,7 @@ export default function App() {
                 <Route path="/recommend" element={<RecommendPage />} />
                 <Route path="/body" element={<BodyPage />} />
                 <Route path="/community" element={<CommunityPage />} />
+                <Route path="/ranking" element={<RankingPage />} />
                 <Route path="/saved" element={<SavedPage />} />
 
                 <Route

@@ -1,0 +1,94 @@
+/**
+ * posts 최상위 컬렉션 — 커뮤니티 게시글 (공개, 로그인한 누구나 읽기).
+ */
+import {
+  arrayRemove,
+  arrayUnion,
+  collection,
+  doc,
+  increment,
+  limit as fsLimit,
+  onSnapshot,
+  orderBy,
+  query,
+  setDoc,
+  updateDoc,
+  where,
+} from 'firebase/firestore'
+import { db } from '@/lib/firebase'
+import { createId } from '@/lib/utils'
+import type { CommunityPost, RankingScope } from '@/types'
+
+interface RawPost extends Omit<CommunityPost, 'liked'> {}
+
+function postsCollection() {
+  return collection(db!, 'posts')
+}
+
+function toPost(raw: RawPost, myUid: string | null): CommunityPost {
+  return { ...raw, liked: myUid ? raw.likedBy.includes(myUid) : false }
+}
+
+export function subscribePosts(myUid: string | null, onChange: (posts: CommunityPost[]) => void) {
+  const q = query(postsCollection(), orderBy('createdAt', 'desc'), fsLimit(100))
+  return onSnapshot(q, (snap) => {
+    onChange(snap.docs.map((d) => toPost(d.data() as RawPost, myUid)))
+  })
+}
+
+/**
+ * 인기 코디 랭킹 — 기간별(주간/월간/전체) 좋아요순 상위 N개.
+ *
+ * Firestore는 range 필터(createdAt >=)를 걸면 그 필드가 반드시 1차 정렬 기준이어야 해서
+ * "기간 필터 + 좋아요순 정렬"을 한 쿼리로 할 수 없다. 기간 내 문서를 넉넉히 가져온 뒤
+ * 클라이언트에서 좋아요순으로 다시 정렬·절단한다 — 커뮤니티 규모가 클 때는 부정확해질 수 있어
+ * FETCH_POOL을 넉넉히 잡는다.
+ */
+const FETCH_POOL = 300
+
+export function subscribePopularPosts(
+  scope: RankingScope,
+  myUid: string | null,
+  onChange: (posts: CommunityPost[]) => void,
+  topN = 20,
+) {
+  const now = Date.now()
+  const sinceMs = scope === 'WEEK' ? now - 7 * 86400_000 : scope === 'MONTH' ? now - 30 * 86400_000 : 0
+  const q =
+    scope === 'ALL'
+      ? query(postsCollection(), orderBy('likeCount', 'desc'), fsLimit(topN))
+      : query(
+          postsCollection(),
+          where('createdAt', '>=', new Date(sinceMs).toISOString()),
+          orderBy('createdAt'),
+          fsLimit(FETCH_POOL),
+        )
+  return onSnapshot(q, (snap) => {
+    const posts = snap.docs.map((d) => toPost(d.data() as RawPost, myUid))
+    posts.sort((a, b) => b.likeCount - a.likeCount)
+    onChange(posts.slice(0, topN))
+  })
+}
+
+export async function createPostDoc(
+  post: Omit<CommunityPost, 'id' | 'likedBy' | 'likeCount' | 'commentCount' | 'viewCount' | 'liked' | 'createdAt'>,
+): Promise<void> {
+  const id = createId('post')
+  const full: RawPost = {
+    ...post,
+    id,
+    likedBy: [],
+    likeCount: 0,
+    commentCount: 0,
+    viewCount: 0,
+    createdAt: new Date().toISOString(),
+  }
+  await setDoc(doc(postsCollection(), id), full)
+}
+
+export async function toggleLikeDoc(postId: string, uid: string, currentlyLiked: boolean): Promise<void> {
+  await updateDoc(doc(postsCollection(), postId), {
+    likedBy: currentlyLiked ? arrayRemove(uid) : arrayUnion(uid),
+    likeCount: increment(currentlyLiked ? -1 : 1),
+  })
+}

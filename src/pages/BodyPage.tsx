@@ -70,7 +70,7 @@ export function BodyPage() {
   const tips = BODY_TIPS[user.bodyShape]
 
   function save() {
-    updateProfile({ height, weight, bodyShape, personalColor, colorPalette: personalColorPalette[personalColor] })
+    void updateProfile({ height, weight, bodyShape, personalColor, colorPalette: personalColorPalette[personalColor] })
     setEditing(false)
   }
 

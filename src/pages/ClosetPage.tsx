@@ -40,7 +40,7 @@ const SORTS: ReadonlyArray<SegmentedOption<SortKey>> = [
 
 export function ClosetPage() {
   const { user } = useAuth()
-  const { closet, addClothingItem, removeClothingItem, togglePreferred } = useAppData()
+  const { closet, closetLoading, addClothingItem, removeClothingItem, togglePreferred } = useAppData()
   const [searchParams, setSearchParams] = useSearchParams()
 
   const [filter, setFilter] = useState<Filter>('ALL')
@@ -121,7 +121,11 @@ export function ClosetPage() {
         </div>
       </div>
 
-      {visible.length === 0 ? (
+      {closetLoading ? (
+        <div className="tf-empty tf-reveal">
+          <MascotBubble message="옷장을 불러오는 중이에요..." mood="thinking" />
+        </div>
+      ) : visible.length === 0 ? (
         <div className="tf-empty tf-reveal">
           <MascotBubble
             message="이 칸은 아직 비어 있어요. 옷을 추가하면 코디 추천이 훨씬 정확해져요!"

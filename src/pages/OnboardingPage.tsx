@@ -34,7 +34,7 @@ const STEPS = ['기본 정보', '체형', '퍼스널 컬러', '스타일 취향'
 
 export function OnboardingPage() {
   const navigate = useNavigate()
-  const { user, updateProfile, completeOnboarding } = useAuth()
+  const { user, updateProfile } = useAuth()
 
   const [step, setStep] = useState(0)
   const [gender, setGender] = useState<Gender>(user?.gender ?? 'UNISEX')
@@ -47,7 +47,9 @@ export function OnboardingPage() {
   const [styles, setStyles] = useState<StyleTag[]>(user?.preferredStyles ?? [])
 
   function finish() {
-    updateProfile({
+    // updateProfile을 두 번 나눠 부르면 두 번째 호출이 첫 번째 호출 이전의 user를 스프레드해
+    // 방금 저장한 필드를 덮어쓴다 — 한 번의 patch로 합쳐서 호출한다.
+    void updateProfile({
       gender,
       height,
       weight,
@@ -55,8 +57,8 @@ export function OnboardingPage() {
       personalColor,
       preferredStyles: styles,
       colorPalette: personalColorPalette[personalColor],
+      onboarded: true,
     })
-    completeOnboarding()
     navigate('/', { replace: true })
   }
 

@@ -370,6 +370,13 @@
 .tf-input:focus-visible {
   border-color: var(--tf-primary-400);
 }
+.tf-textarea {
+  height: auto;
+  padding: 10px 14px;
+  resize: vertical;
+  min-height: 72px;
+  font-family: inherit;
+}
 .tf-chipset {
   display: flex;
   flex-wrap: wrap;
@@ -713,6 +720,14 @@
   width: 100%;
   height: 100%;
   display: block;
+}
+.tf-createpost__preview {
+  width: 160px;
+  aspect-ratio: 5 / 6;
+  margin: 0 auto;
+  border-radius: var(--tf-r-md);
+  overflow: hidden;
+  background: var(--tf-surface);
 }
 .tf-postcard__body {
   padding: var(--tf-sp-3);

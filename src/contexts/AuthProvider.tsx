@@ -2,19 +2,19 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  sendEmailVerification,
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
 } from 'firebase/auth'
 import { auth, isFirebaseConfigured } from '@/lib/firebase'
-import { mockUser } from '@/data/mock'
+import { fetchUserProfile, saveUserProfile, subscribeUserProfile } from '@/services/firestoreProfile'
 import { personalColorPalette } from '@/lib/labels'
 import type { UserProfile } from '@/types'
 import { AuthContext, type AuthContextValue } from './auth-context'
 
-const PROFILE_KEY = 'tofit.profile'
-const ONBOARDED_KEY = 'tofit.onboarded'
+const PROFILE_KEY = 'tofit.mockProfile'
 
-function readStoredProfile(): UserProfile | null {
+function readStoredMockProfile(): UserProfile | null {
   try {
     const raw = localStorage.getItem(PROFILE_KEY)
     return raw ? (JSON.parse(raw) as UserProfile) : null
@@ -23,10 +23,10 @@ function readStoredProfile(): UserProfile | null {
   }
 }
 
-function buildProfile(email: string, nickname: string): UserProfile {
+function buildProfile(uid: string, email: string, nickname: string): UserProfile {
   const now = new Date().toISOString()
   return {
-    id: `user_${nickname}`,
+    id: uid,
     email,
     nickname,
     gender: 'UNISEX',
@@ -36,6 +36,8 @@ function buildProfile(email: string, nickname: string): UserProfile {
     bodyShape: 'NATURAL',
     preferredStyles: [],
     colorPalette: personalColorPalette.SUMMER_COOL,
+    onboarded: false,
+    following: [],
     createdAt: now,
     updatedAt: now,
   }
@@ -44,37 +46,55 @@ function buildProfile(email: string, nickname: string): UserProfile {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null)
   const [ready, setReady] = useState(false)
-  const [onboarded, setOnboarded] = useState(() => localStorage.getItem(ONBOARDED_KEY) === 'true')
+  const [emailVerified, setEmailVerified] = useState(true)
 
-  // 프로필은 로컬에 캐싱한다. Firestore 연동 시 이 부분을 users/{uid} 문서 구독으로 교체한다.
+  // Firebase 미설정 시(로컬 개발용 목업 모드) 세션 복구
   useEffect(() => {
-    if (!isFirebaseConfigured || !auth) {
-      setUser(readStoredProfile())
+    if (!ready && (!isFirebaseConfigured || !auth)) {
+      setUser(readStoredMockProfile())
       setReady(true)
-      return
     }
+  }, [ready])
 
-    return onAuthStateChanged(auth, (firebaseUser) => {
+  useEffect(() => {
+    if (!isFirebaseConfigured || !auth) return
+
+    return onAuthStateChanged(auth, async (firebaseUser) => {
       if (!firebaseUser) {
         setUser(null)
+        setEmailVerified(true)
         setReady(true)
         return
       }
-      const cached = readStoredProfile()
-      const nickname = firebaseUser.displayName ?? firebaseUser.email?.split('@')[0] ?? 'user'
-      setUser(
-        cached?.email === firebaseUser.email
-          ? cached
-          : { ...buildProfile(firebaseUser.email ?? '', nickname), id: firebaseUser.uid },
-      )
+
+      setEmailVerified(firebaseUser.emailVerified)
+
+      let profile = await fetchUserProfile(firebaseUser.uid)
+      if (!profile) {
+        const nickname = firebaseUser.displayName ?? firebaseUser.email?.split('@')[0] ?? 'user'
+        profile = buildProfile(firebaseUser.uid, firebaseUser.email ?? '', nickname)
+        await saveUserProfile(profile)
+      }
+      setUser(profile)
       setReady(true)
     })
   }, [])
 
-  // ready 이전에는 실행하지 않는다 — 세션 복구 effect가 아직 user를 채우기 전이라
-  // 초기 렌더의 user=null 값으로 이 effect가 먼저 돌면 방금 복구한 프로필을 지워버린다.
+  // 프로필 실시간 구독 — 다른 기기·탭에서의 변경도 반영한다
   useEffect(() => {
-    if (!ready) return
+    if (!isFirebaseConfigured || !auth || !user) return
+    const uid = user.id
+    const unsubscribe = subscribeUserProfile(uid, (latest) => {
+      if (latest) setUser(latest)
+    })
+    return unsubscribe
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
+
+  // 목업 모드에서만 localStorage가 소스 오브 트루스다 (Firestore 연동 시엔 그쪽이 진실).
+  // ready 이전에 실행하면 초기 렌더의 user=null로 방금 복구한 프로필을 지워버리니 가드한다.
+  useEffect(() => {
+    if (isFirebaseConfigured || !ready) return
     if (user) localStorage.setItem(PROFILE_KEY, JSON.stringify(user))
     else localStorage.removeItem(PROFILE_KEY)
   }, [user, ready])
@@ -84,37 +104,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await signInWithEmailAndPassword(auth, email, password)
       return
     }
-    // 목업 모드 — 데모 시드 계정이면 시드 프로필을, 아니면 새 프로필을 만든다.
-    const profile =
-      email === mockUser.email ? mockUser : buildProfile(email, email.split('@')[0] || 'user')
-    setUser(profile)
+    setUser(buildProfile(`mock_${email}`, email, email.split('@')[0] || 'user'))
   }, [])
 
   const signUp = useCallback(async (email: string, password: string, nickname: string) => {
     if (isFirebaseConfigured && auth) {
-      await createUserWithEmailAndPassword(auth, email, password)
-      setUser((prev) => prev ?? buildProfile(email, nickname))
+      const credential = await createUserWithEmailAndPassword(auth, email, password)
+      await sendEmailVerification(credential.user)
       return
     }
-    setUser(buildProfile(email, nickname))
+    setUser(buildProfile(`mock_${email}`, email, nickname))
   }, [])
 
   const signOut = useCallback(async () => {
     if (isFirebaseConfigured && auth) await firebaseSignOut(auth)
     setUser(null)
-    setOnboarded(false)
-    localStorage.removeItem(ONBOARDED_KEY)
   }, [])
 
-  const updateProfile = useCallback((patch: Partial<UserProfile>) => {
-    setUser((prev) =>
-      prev ? { ...prev, ...patch, updatedAt: new Date().toISOString() } : prev,
-    )
-  }, [])
+  const updateProfile = useCallback(
+    async (patch: Partial<UserProfile>) => {
+      if (!user) return
+      const updated = { ...user, ...patch, updatedAt: new Date().toISOString() }
+      setUser(updated)
+      if (isFirebaseConfigured) await saveUserProfile(updated)
+    },
+    [user],
+  )
 
   const completeOnboarding = useCallback(() => {
-    setOnboarded(true)
-    localStorage.setItem(ONBOARDED_KEY, 'true')
+    void updateProfile({ onboarded: true })
+  }, [updateProfile])
+
+  const resendVerificationEmail = useCallback(async () => {
+    if (auth?.currentUser) await sendEmailVerification(auth.currentUser)
+  }, [])
+
+  const refreshEmailVerified = useCallback(async () => {
+    if (!auth?.currentUser) return
+    await auth.currentUser.reload()
+    setEmailVerified(auth.currentUser.emailVerified)
   }, [])
 
   const value = useMemo<AuthContextValue>(
@@ -122,14 +150,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       ready,
       usingMockAuth: !isFirebaseConfigured,
+      emailVerified: !isFirebaseConfigured || emailVerified,
       signIn,
       signUp,
       signOut,
       updateProfile,
-      onboarded,
+      onboarded: user?.onboarded ?? false,
       completeOnboarding,
+      resendVerificationEmail,
+      refreshEmailVerified,
     }),
-    [user, ready, signIn, signUp, signOut, updateProfile, onboarded, completeOnboarding],
+    [
+      user,
+      ready,
+      emailVerified,
+      signIn,
+      signUp,
+      signOut,
+      updateProfile,
+      completeOnboarding,
+      resendVerificationEmail,
+      refreshEmailVerified,
+    ],
   )
 
   return <AuthContext value={value}>{children}</AuthContext>

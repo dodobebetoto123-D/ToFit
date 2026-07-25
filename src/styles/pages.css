@@ -419,6 +419,26 @@
   color: var(--tf-primary-600);
   white-space: nowrap;
 }
+.tf-brandrow__pricebox {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.tf-brandrow__discount {
+  font-size: var(--tf-fs-micro);
+  font-weight: 800;
+  color: var(--tf-like);
+}
+.tf-brandrow__original {
+  font-size: var(--tf-fs-micro);
+  color: var(--tf-ink-300);
+  text-decoration: line-through;
+}
+.tf-brandlist__disclaimer {
+  padding-top: var(--tf-sp-2);
+  border-top: 1px dashed var(--tf-line);
+}
 
 .tf-feedback {
   display: flex;
@@ -549,6 +569,85 @@
 }
 .tf-compat__row.is-me .tf-meter__fill {
   background: linear-gradient(90deg, var(--tf-primary-400), var(--tf-primary-600));
+}
+
+/* ── Ranking ──────────────────────────────────────────────── */
+.tf-rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--tf-surface-sunken);
+  color: var(--tf-ink-500);
+  font-weight: 800;
+  font-size: var(--tf-fs-caption);
+}
+.tf-rank-badge[data-top='true'] {
+  background: none;
+  font-size: 20px;
+}
+
+.tf-rankgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--tf-sp-4);
+}
+.tf-rankgrid__item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tf-ranklist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tf-sp-2);
+}
+.tf-rankrow {
+  display: flex;
+  align-items: center;
+  gap: var(--tf-sp-3);
+  padding: var(--tf-sp-2) var(--tf-sp-3);
+  border-radius: var(--tf-r-md);
+  transition: var(--tf-t-hover);
+}
+.tf-rankrow:hover {
+  background: var(--tf-surface);
+}
+.tf-rankrow--me {
+  background: var(--tf-primary-50);
+  box-shadow: inset 0 0 0 1.5px var(--tf-primary-300);
+}
+.tf-rankrow__info {
+  flex: 1;
+  min-width: 0;
+}
+.tf-rankrow__name {
+  font-weight: 700;
+  font-size: var(--tf-fs-body);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tf-rankrow__score {
+  font-weight: 800;
+  font-size: var(--tf-fs-body);
+  color: var(--tf-primary-600);
+  white-space: nowrap;
+}
+.tf-my-rank {
+  background: var(--tf-primary-50);
+  color: var(--tf-primary-700);
+  border-radius: var(--tf-r-sm);
+  padding: var(--tf-sp-2) var(--tf-sp-4);
+  font-size: var(--tf-fs-caption);
+  font-weight: 700;
+}
+.tf-my-rank strong {
+  font-size: var(--tf-fs-subtitle);
 }
 
 /* ── Saved ────────────────────────────────────────────────── */

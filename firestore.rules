@@ -1,0 +1,56 @@
+rules_version = '2';
+
+/**
+ * ToFit Firestore 보안 규칙.
+ *
+ * 데이터 구조:
+ *   users/{uid}              — 비공개 계정 정보 (이메일 포함). 본인만 읽기/쓰기.
+ *   users/{uid}/clothes/*     — 내 옷장. 본인만 읽기/쓰기.
+ *   users/{uid}/savedOutfits/*— 찜한 코디. 본인만 읽기/쓰기.
+ *   users/{uid}/feedbacks/*   — 코디 피드백. 본인만 읽기/쓰기.
+ *   users/{uid}/schedules/*   — 일정. 본인만 읽기/쓰기.
+ *   publicProfiles/{uid}      — 스타일 트윈 매칭·랭킹에 쓰는 공개 프로필(이메일 없음).
+ *                               로그인한 누구나 읽기, 본인만 쓰기.
+ *   posts/{postId}            — 커뮤니티 게시글. 로그인한 누구나 읽기.
+ *                               작성자만 생성·삭제. 좋아요(likedBy/likeCount)만은
+ *                               다른 로그인 사용자도 토글할 수 있게 허용.
+ */
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    match /users/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+
+      match /clothes/{clothId} {
+        allow read, write: if signedIn() && request.auth.uid == uid;
+      }
+      match /savedOutfits/{savedId} {
+        allow read, write: if signedIn() && request.auth.uid == uid;
+      }
+      match /feedbacks/{feedbackId} {
+        allow read, write: if signedIn() && request.auth.uid == uid;
+      }
+      match /schedules/{scheduleId} {
+        allow read, write: if signedIn() && request.auth.uid == uid;
+      }
+    }
+
+    match /publicProfiles/{uid} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == uid;
+    }
+
+    match /posts/{postId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.authorId == request.auth.uid;
+      allow delete: if signedIn() && resource.data.authorId == request.auth.uid;
+      allow update: if signedIn() && (
+        resource.data.authorId == request.auth.uid ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedBy', 'likeCount'])
+      );
+    }
+  }
+}

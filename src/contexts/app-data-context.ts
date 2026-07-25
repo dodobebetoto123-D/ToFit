@@ -1,17 +1,9 @@
 import { createContext } from 'react'
-import type {
-  ClothingItem,
-  CommunityPost,
-  Coordinate,
-  OutfitFeedback,
-  SavedOutfit,
-  ScheduleSituation,
-  StyleTwin,
-  WeatherSnapshot,
-} from '@/types'
+import type { ClothingItem, CommunityPost, Coordinate, OutfitFeedback, SavedOutfit } from '@/types'
 
 export interface AppDataContextValue {
   closet: ClothingItem[]
+  closetLoading: boolean
   addClothingItem: (item: Omit<ClothingItem, 'id' | 'createdAt' | 'updatedAt' | 'wearCount'>) => void
   removeClothingItem: (id: string) => void
   togglePreferred: (id: string) => void
@@ -28,13 +20,14 @@ export interface AppDataContextValue {
   addFeedback: (feedback: Omit<OutfitFeedback, 'id' | 'createdAt'>) => void
 
   posts: CommunityPost[]
+  postsLoading: boolean
+  createPost: (
+    post: Omit<
+      CommunityPost,
+      'id' | 'likedBy' | 'likeCount' | 'commentCount' | 'viewCount' | 'liked' | 'createdAt'
+    >,
+  ) => void
   toggleLike: (postId: string) => void
-
-  twins: StyleTwin[]
-  toggleFollowTwin: (twinId: string) => void
-
-  weather: WeatherSnapshot
-  schedules: ScheduleSituation[]
 
   /** 오늘 남은 무료 추천 횟수 (수익 모델: 일 2회 제한) */
   remainingRecommendations: number

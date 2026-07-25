@@ -26,6 +26,7 @@ export type IconName =
   | 'close'
   | 'check'
   | 'camera'
+  | 'trophy'
 
 const PATHS: Record<IconName, string> = {
   home: 'M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4v-5h-6v5H5a1 1 0 0 1-1-1Z',
@@ -52,6 +53,8 @@ const PATHS: Record<IconName, string> = {
   close: 'm6 6 12 12M18 6 6 18',
   check: 'm5 12.5 4.5 4.5L19 7.5',
   camera: 'M4 8h3.5L9 5.5h6L16.5 8H20v11.5H4Zm8 9.5a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z',
+  trophy:
+    'M7 4h10v5a5 5 0 0 1-5 5 5 5 0 0 1-5-5Zm-3 1H2v2a4 4 0 0 0 4 4M17 5h5v2a4 4 0 0 1-4 4M10 14v3M9 20h6M9 17h6v3H9Z',
 }
 
 interface IconProps {

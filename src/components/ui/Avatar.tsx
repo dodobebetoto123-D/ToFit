@@ -8,7 +8,7 @@ interface AvatarProps {
 }
 
 export function Avatar({ nickname, color = '#a0b1f5', size = 32, className }: AvatarProps) {
-  const initial = nickname.trim().charAt(0).toUpperCase() || '?'
+  const initial = (nickname ?? '').trim().charAt(0).toUpperCase() || '?'
 
   return (
     <span

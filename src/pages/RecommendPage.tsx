@@ -9,6 +9,7 @@ import { Toggle } from '@/components/ui/Toggle'
 import { useAppData } from '@/hooks/useAppData'
 import { useAuth } from '@/hooks/useAuth'
 import { useOutfitRecommendation } from '@/hooks/useOutfitRecommendation'
+import { useWeather } from '@/hooks/useWeather'
 import {
   feedbackTagLabel,
   majorCategoryLabel,
@@ -24,7 +25,6 @@ export function RecommendPage() {
   const { user } = useAuth()
   const {
     closet,
-    weather,
     saveOutfit,
     isSaved,
     markCoordinateWorn,
@@ -32,6 +32,7 @@ export function RecommendPage() {
     remainingRecommendations,
     consumeRecommendation,
   } = useAppData()
+  const { weather, isEstimate: weatherIsEstimate } = useWeather()
 
   const [situation, setSituation] = useState<Situation>('DAILY')
   const [closetOnly, setClosetOnly] = useState(false)
@@ -87,6 +88,7 @@ export function RecommendPage() {
           <p className="tf-caption">
             {weather.locationName} · {weather.status} · 체감 {weather.feelsLike}℃ (최고{' '}
             {weather.temperatureHigh}℃ / 최저 {weather.temperatureLow}℃)
+            {weatherIsEstimate && ' — 실시간 조회가 안 돼 추정치를 보여드려요'}
           </p>
         </div>
         <Chip readOnly tone="cool">
@@ -267,14 +269,41 @@ export function RecommendPage() {
                   </p>
                 </div>
                 {slot.price !== undefined && (
-                  <span className="tf-brandrow__price">{formatPrice(slot.price)}</span>
+                  <div className="tf-brandrow__pricebox">
+                    {slot.discountRate !== undefined && (
+                      <span className="tf-brandrow__discount">
+                        추정 {Math.round(slot.discountRate * 100)}%
+                      </span>
+                    )}
+                    <span className="tf-brandrow__price">
+                      {formatPrice(
+                        slot.discountRate !== undefined
+                          ? Math.round(slot.price * (1 - slot.discountRate))
+                          : slot.price,
+                      )}
+                    </span>
+                    {slot.discountRate !== undefined && (
+                      <span className="tf-brandrow__original">{formatPrice(slot.price)}</span>
+                    )}
+                  </div>
                 )}
-                <Button variant="soft" size="sm">
-                  비교하기
+                <Button
+                  as="a"
+                  href={slot.searchUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  variant="soft"
+                  size="sm"
+                >
+                  검색결과 보기
                 </Button>
               </li>
             ))}
           </ul>
+          <p className="tf-micro tf-brandlist__disclaimer">
+            * 할인율은 실시간 가격 연동 전까지의 추정치예요. 정확한 가격과 재고는 연결된 검색결과
+            페이지에서 확인해 주세요.
+          </p>
         </Card>
       )}
 

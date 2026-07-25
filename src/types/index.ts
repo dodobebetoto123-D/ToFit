@@ -58,6 +58,10 @@ export interface UserProfile {
   /** 퍼스널 컬러 진단으로 도출된 대표 팔레트 (HEX) */
   colorPalette: string[]
   avatarUrl?: string
+  /** 1분 맞춤 진단(온보딩) 완료 여부 — 기기 간 동기화를 위해 Firestore에 저장 */
+  onboarded: boolean
+  /** 팔로우한 스타일 트윈의 uid 목록 */
+  following: string[]
   createdAt: string
   updatedAt: string
 }
@@ -196,8 +200,12 @@ export interface CoordinateSlot {
   brand: string
   color: string
   colorName: string
-  /** 옷장에 없어서 구매를 제안하는 상품이면 가격이 붙는다 */
+  /** 옷장에 없어서 구매를 제안하는 상품이면 가격이 붙는다 (정가) */
   price?: number
+  /** 0~1, 브랜드 제안 아이템에 한해 표시하는 추정 할인율 — 실시간 가격 연동 전까지의 추정치 */
+  discountRate?: number
+  /** 브랜드+상품명으로 연결되는 실제 검색결과 페이지 (무신사) */
+  searchUrl?: string
   source: 'CLOSET' | 'BRAND'
 }
 
@@ -261,9 +269,12 @@ export interface CommunityPost {
   content: string
   hashtags: string[]
   outfitPhotoTheme: OutfitPhotoTheme
+  /** Firestore에 저장되는 원본 — 좋아요 누른 사용자 uid 목록 */
+  likedBy: string[]
   likeCount: number
   commentCount: number
   viewCount: number
+  /** 현재 로그인한 사용자 기준 파생값 (likedBy.includes(내 uid)) — Firestore에 저장하지 않는다 */
   liked: boolean
   createdAt: string
 }
@@ -289,10 +300,44 @@ export interface StyleTwin {
   avatarColor: string
   height: number
   weight: number
-  age: number
   bodyShape: BodyShape
   styleTags: StyleTag[]
   /** 코사인 유사도 0~1 */
   similarity: number
   following: boolean
 }
+
+/* ─────────────────────────────────────────────────────────────
+   공개 프로필 (스타일 트윈 매칭 · 랭킹용, 이메일 등 비공개 정보 없음)
+   ───────────────────────────────────────────────────────────── */
+
+export interface PublicProfileStats {
+  /** 옷장 아이템 전체 착용 횟수 합 */
+  wearCount: number
+  closetCount: number
+  /** 0~1, 옷장 아이템 중 한 번이라도 입은 비율 */
+  closetUtilization: number
+  savedOutfitCount: number
+  /** 랭킹에 쓰는 종합 활동 점수 */
+  activityScore: number
+}
+
+export interface PublicProfile {
+  uid: string
+  nickname: string
+  avatarColor: string
+  height: number
+  weight: number
+  bodyShape: BodyShape
+  personalColor: PersonalColor
+  styleTags: StyleTag[]
+  stats: PublicProfileStats
+  updatedAt: string
+}
+
+/* ─────────────────────────────────────────────────────────────
+   랭킹
+   ───────────────────────────────────────────────────────────── */
+
+export const RANKING_SCOPES = ['WEEK', 'MONTH', 'ALL'] as const
+export type RankingScope = (typeof RANKING_SCOPES)[number]

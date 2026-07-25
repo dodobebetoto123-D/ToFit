@@ -13,6 +13,7 @@ import { Toggle } from '@/components/ui/Toggle'
 import { useAppData } from '@/hooks/useAppData'
 import { useAuth } from '@/hooks/useAuth'
 import { useOutfitRecommendation } from '@/hooks/useOutfitRecommendation'
+import { useWeather } from '@/hooks/useWeather'
 import {
   bodyShapeLabel,
   bodyShapeSummary,
@@ -50,8 +51,6 @@ export function HomePage() {
   const { user } = useAuth()
   const {
     closet,
-    weather,
-    schedules,
     posts,
     toggleLike,
     saveOutfit,
@@ -60,6 +59,7 @@ export function HomePage() {
     remainingRecommendations,
     consumeRecommendation,
   } = useAppData()
+  const { weather, isEstimate: weatherIsEstimate } = useWeather()
 
   const [situation, setSituation] = useState<Situation>('OFFICE')
   const [closetOnly, setClosetOnly] = useState(false)
@@ -122,18 +122,9 @@ export function HomePage() {
             <span className="tf-fact__value">{weather.temperature}℃</span>
             <span className="tf-fact__label">
               {weather.locationName} · {weather.status}
+              {weatherIsEstimate && ' (추정)'}
             </span>
           </div>
-
-          {schedules.slice(0, 2).map((schedule) => (
-            <div className="tf-fact" key={schedule.id}>
-              <span className="tf-fact__icon" aria-hidden="true">
-                {situationEmoji[schedule.situationTag]}
-              </span>
-              <span className="tf-fact__value">{schedule.title}</span>
-              <span className="tf-fact__label">{schedule.eventTime}</span>
-            </div>
-          ))}
 
           <Button
             size="lg"
