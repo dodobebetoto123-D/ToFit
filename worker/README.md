@@ -82,7 +82,8 @@ curl -X POST https://tofit-ai-proxy.<계정이름>.workers.dev \
 - 모델과 시스템 프롬프트가 Worker에 고정돼 있어, 범용 LLM 프록시로 악용하기 어렵습니다
 - `action`은 `classify`와 `copy` 두 가지만 허용합니다
 - `wrangler.toml`의 `ALLOWED_ORIGINS`에 없는 출처는 403으로 막습니다
-- 429/5xx는 Worker가 최대 3회까지 자동 재시도합니다
+- 5xx는 Worker가 한 번 재시도합니다. 429는 재시도하지 않고 바로 규칙 기반 문구로 폴백합니다
+  (Gemini 무료 등급은 분당 20회 제한이라, 짧게 재시도해봐야 할당량만 축납니다)
 - `responseSchema`로 출력 형식을 강제해, 카테고리·소재는 정해진 값 중에서만 나옵니다
 
 > CORS는 브라우저에서 오는 요청만 막습니다. curl 같은 직접 호출까지 완전히 차단하려면

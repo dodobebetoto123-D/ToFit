@@ -151,14 +151,16 @@ const COLOR_WORDS = [
   '퍼플', '아이보리', '크림', '카멜', '차콜', '라벤더', '데님',
 ]
 
-/** 코디에 실제로 쓰인 색 이름으로 설명되는 색 단어인지 */
-function isColorGrounded(word: string, actualColorNames: string[]): boolean {
-  return actualColorNames.some((name) => name.includes(word))
-}
-
-/** 실제 코디에 없는 색을 언급하면 true — 그런 문구는 쓰지 않는다 */
-function mentionsUnknownColor(text: string, actualColorNames: string[]): boolean {
-  return COLOR_WORDS.some((word) => text.includes(word) && !isColorGrounded(word, actualColorNames))
+/**
+ * 실제 코디에 없는 색을 언급하면 true — 그런 문구는 쓰지 않는다.
+ *
+ * 색 이름뿐 아니라 아이템 이름까지 근거로 삼는다. "데님"·"카키"처럼 색 이름이면서
+ * 동시에 소재·품목 이름인 단어가 있어서, 색 이름만 보면 "와이드 스트레이트 데님"을
+ * 정확히 옮겨 쓴 문구까지 거짓으로 걸러낸다.
+ */
+function mentionsUnknownColor(text: string, groundingTerms: string[]): boolean {
+  const grounded = groundingTerms.join(' ')
+  return COLOR_WORDS.some((word) => text.includes(word) && !grounded.includes(word))
 }
 
 export async function generateOutfitCopy(
@@ -187,8 +189,8 @@ export async function generateOutfitCopy(
     return null
   }
 
-  const actualColorNames = context.items.map((item) => item.colorName)
-  if (mentionsUnknownColor(combined, actualColorNames)) {
+  const groundingTerms = context.items.flatMap((item) => [item.colorName, item.name])
+  if (mentionsUnknownColor(combined, groundingTerms)) {
     console.warn('[ToFit] AI 문구가 실제 코디에 없는 색을 언급해 사용하지 않습니다.')
     return null
   }

@@ -69,8 +69,15 @@ function json(body, status, headers) {
   })
 }
 
-/** 429·5xx는 잠깐 기다렸다 다시 시도한다 */
-async function callGeminiWithRetry(model, payload, apiKey, attempts = 3) {
+/**
+ * 일시적인 서버 오류(5xx)만 짧게 재시도한다.
+ *
+ * 429는 재시도하지 않는다. Gemini 무료 등급은 분당 20회 제한이고 "27초 뒤에 다시
+ * 오라"고 알려주는데, 그만큼 기다리면 사용자가 화면 앞에서 멈춰 있게 된다. 게다가
+ * 짧은 백오프로 다시 찔러봐야 같은 한도에 걸려 남은 할당량만 축낸다.
+ * 호출부(src/lib/ai.ts)가 규칙 기반 문구로 조용히 폴백하므로 실패해도 화면은 멀쩡하다.
+ */
+async function callGeminiWithRetry(model, payload, apiKey, attempts = 2) {
   let last = null
 
   for (let attempt = 0; attempt < attempts; attempt += 1) {
@@ -83,14 +90,8 @@ async function callGeminiWithRetry(model, payload, apiKey, attempts = 3) {
     if (response.ok) return response
     last = response
 
-    const retriable = response.status === 429 || response.status >= 500
-    if (!retriable || attempt === attempts - 1) return response
-
-    const retryAfter = Number(response.headers.get('Retry-After'))
-    const waitMs = Number.isFinite(retryAfter) && retryAfter > 0
-      ? Math.min(retryAfter * 1000, 5000)
-      : 600 * 3 ** attempt
-    await new Promise((resolve) => setTimeout(resolve, waitMs))
+    if (response.status < 500 || attempt === attempts - 1) return response
+    await new Promise((resolve) => setTimeout(resolve, 500))
   }
 
   return last ?? new Response(null, { status: 502 })
