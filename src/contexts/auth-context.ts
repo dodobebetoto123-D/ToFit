@@ -19,7 +19,8 @@ export interface AuthContextValue {
   /** 인증 메일 재전송 */
   resendVerificationEmail: () => Promise<void>
   /** Firebase에서 최신 인증 상태를 다시 확인한다 (메일 인증 후 새로고침 없이 반영) */
-  refreshEmailVerified: () => Promise<void>
+  /** 메일 링크를 누른 뒤 상태를 다시 확인한다 — 인증 완료면 true */
+  refreshEmailVerified: () => Promise<boolean>
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)

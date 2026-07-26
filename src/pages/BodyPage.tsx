@@ -7,6 +7,7 @@ import { Icon } from '@/components/ui/Icon'
 import { useAppData } from '@/hooks/useAppData'
 import { useAuth } from '@/hooks/useAuth'
 import { HEIGHT_RANGE, WEIGHT_RANGE, validateBodyMetrics } from '@/lib/bodyMetrics'
+import { BODY_STYLE_ADVICE } from '@/lib/bodyStyle'
 import {
   bodyShapeLabel,
   bodyShapeSummary,
@@ -19,22 +20,6 @@ import { computeClosetBodyShapeFit } from '@/services/recommend'
 import { BODY_SHAPES, PERSONAL_COLORS, type BodyShape, type PersonalColor } from '@/types'
 
 
-
-/** 체형별 추천 · 피하면 좋은 실루엣 */
-const BODY_TIPS: Record<BodyShape, { good: string[]; avoid: string[] }> = {
-  STRAIGHT: {
-    good: ['V넥 · 오픈 카라로 목선 열기', '허리선이 뚜렷한 재킷', '매끈한 소재의 셔츠·슬랙스'],
-    avoid: ['목이 꽉 차는 하이넥', '가슴 위 큰 프린트', '과하게 볼륨 있는 니트'],
-  },
-  WAVE: {
-    good: ['짧은 상의 + 하이웨스트 하의', '부드럽고 얇은 소재', '허리를 강조하는 벨트'],
-    avoid: ['어깨가 각진 오버핏 아우터', '무겁고 뻣뻣한 소재', '길고 헐렁한 상의'],
-  },
-  NATURAL: {
-    good: ['넉넉한 오버사이즈 실루엣', '두께감 있는 니트·데님', '레이어링으로 만드는 볼륨'],
-    avoid: ['몸에 딱 붙는 얇은 상의', '지나치게 짧은 기장', '광택이 강한 소재'],
-  },
-}
 
 export function BodyPage() {
   const { user, updateProfile } = useAuth()
@@ -73,7 +58,7 @@ export function BodyPage() {
 
   if (!user) return null
 
-  const tips = BODY_TIPS[user.bodyShape]
+  const tips = BODY_STYLE_ADVICE[user.bodyShape]
 
   // 범위를 벗어난 수치가 저장되면 체형 적합도·추천 점수가 통째로 어긋난다.
   const metricsError = validateBodyMetrics(height, weight)

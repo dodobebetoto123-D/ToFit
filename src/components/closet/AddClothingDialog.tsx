@@ -7,6 +7,7 @@ import {
   extractDominantColor,
   fileToDisplayDataUrl,
   fileToVisionDataUrl,
+  ImageError,
   NAMED_COLORS,
   nearestColorName,
 } from '@/lib/image'
@@ -95,17 +96,24 @@ export function AddClothingDialog({ open, userId, onClose, onSubmit }: AddClothi
   }
 
   async function handlePhoto(file: File) {
+    setError(null)
+
     // 저장용은 확대 보기에서 소재·패턴이 보이도록 크게, AI 전송용은 작게 — 두 벌을 따로 만든다.
     let dataUrl: string | undefined
     try {
       setPhotoUrl(await fileToDisplayDataUrl(file))
-    } catch {
-      // 압축 실패해도 아래 색상 추출·수동 입력은 그대로 진행한다.
+    } catch (caught) {
+      // 예전에는 여기서 조용히 삼켜서, 사진이 안 붙었는데 이유를 알 수 없었다.
+      setPhotoUrl(undefined)
+      setError(
+        caught instanceof ImageError ? caught.message : '사진을 처리하지 못했어요. 다시 시도해 주세요.',
+      )
+      return
     }
     try {
       dataUrl = await fileToVisionDataUrl(file)
     } catch {
-      // Vision 전송용을 못 만들면 아래 AI 분석 단계는 건너뛴다.
+      // 표시용은 이미 만들었다 — AI 분석만 건너뛴다.
     }
 
     // 즉시 미리보기용 — 캔버스 기반 평균색은 네트워크 없이 바로 나온다.

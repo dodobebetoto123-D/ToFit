@@ -16,6 +16,7 @@ import { useAppData } from '@/hooks/useAppData'
 import { useAuth } from '@/hooks/useAuth'
 import { useOutfitRecommendation } from '@/hooks/useOutfitRecommendation'
 import { useWeather } from '@/hooks/useWeather'
+import { BODY_STYLE_ADVICE } from '@/lib/bodyStyle'
 import { brandsForStyles, buildBrandUrl } from '@/lib/brands'
 import {
   bodyShapeLabel,
@@ -41,13 +42,6 @@ const CLOSET_FILTERS: ReadonlyArray<SegmentedOption<MajorCategory | 'ALL'>> = [
     value: category,
     label: majorCategoryLabel[category],
   })),
-]
-
-const STYLE_GUIDE = [
-  '어깨선이 또렷해서 각진 아우터가 잘 맞아요',
-  '허리선을 살짝 드러내면 비율이 살아나요',
-  '두께감 있는 소재가 골격을 자연스럽게 감싸요',
-  '큰 패턴보다 무지 · 잔잔한 패턴이 안정적이에요',
 ]
 
 export function HomePage() {
@@ -85,6 +79,9 @@ export function HomePage() {
     () => [...posts].sort((a, b) => b.likeCount - a.likeCount).slice(0, 4),
     [posts],
   )
+
+  // 내 골격형에 맞는 스타일 가이드 (체형 맞춤 화면과 같은 데이터를 쓴다)
+  const styleGuide = user ? BODY_STYLE_ADVICE[user.bodyShape].guide : []
 
   // 내 선호 스타일과 겹치는 브랜드를 우선으로 4개만 — 전체 목록은 브랜드 추천 페이지에 있다.
   const suggestedBrands = useMemo(
@@ -234,9 +231,21 @@ export function HomePage() {
               )}
             </Card>
 
-            <Card className="tf-reveal" icon="📋" title="추천 스타일 가이드">
+            {/* 체형에 따라 내용이 달라진다 — 예전에는 하드코딩된 4줄이라 누구에게나 같았다 */}
+            <Card
+              className="tf-reveal"
+              icon="📋"
+              title="추천 스타일 가이드"
+              action={
+                user && (
+                  <Chip size="sm" readOnly>
+                    {bodyShapeLabel[user.bodyShape]}
+                  </Chip>
+                )
+              }
+            >
               <ul className="tf-guide tf-stagger">
-                {STYLE_GUIDE.map((line) => (
+                {styleGuide.map((line) => (
                   <li key={line}>
                     <Icon name="check" size={15} />
                     <span>{line}</span>

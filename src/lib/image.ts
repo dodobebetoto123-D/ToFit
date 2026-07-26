@@ -5,27 +5,70 @@
  * 카테고리·브랜드 인식은 서버 Vision API가 붙어야 하므로 아직 사용자 입력을 받는다.
  */
 
-/** 긴 변을 maxSize로 줄여 JPEG data URL로 인코딩한다 */
+/** 브라우저가 캔버스로 확실히 다룰 수 있는 형식만 받는다 (HEIC 등은 여기서 걸러진다) */
+const SUPPORTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/bmp']
+/** 원본 파일 상한 — 이보다 크면 브라우저가 디코딩하다 뻗을 수 있다 */
+const MAX_SOURCE_BYTES = 25 * 1024 * 1024
+/** Firestore 문서 상한(1MiB)에 사진 말고 다른 필드도 들어가므로 여유를 둔다 */
+const MAX_STORED_CHARS = 700_000
+
+/** 사용자에게 그대로 보여줄 수 있는 메시지를 담은 오류 */
+export class ImageError extends Error {}
+
+function assertUsable(file: File) {
+  if (!SUPPORTED_TYPES.includes(file.type)) {
+    throw new ImageError(
+      file.type === 'image/heic' || file.type === 'image/heif'
+        ? 'iPhone의 HEIC 사진은 아직 지원하지 않아요. 설정 > 카메라 > 포맷을 "높은 호환성"으로 바꾸거나 JPG로 저장해 주세요.'
+        : '지원하지 않는 이미지 형식이에요. JPG · PNG · WEBP 파일을 올려 주세요.',
+    )
+  }
+  if (file.size > MAX_SOURCE_BYTES) {
+    throw new ImageError('사진이 너무 커요. 25MB 이하로 올려 주세요.')
+  }
+}
+
+/**
+ * 긴 변을 maxSize로 줄여 JPEG data URL로 인코딩한다.
+ *
+ * 두 가지를 반드시 처리해야 사진이 깨지지 않는다.
+ *  - `imageOrientation: 'from-image'` — 없으면 휴대폰으로 세로로 찍은 사진의 EXIF 회전
+ *    정보가 무시돼 옆으로 누운 채 저장된다.
+ *  - 흰 배경 깔기 — JPEG에는 투명도가 없어서, 투명한 PNG를 그냥 인코딩하면 투명한
+ *    부분이 전부 **검게** 나온다.
+ */
 async function resizeToDataUrl(file: File, maxSize: number, quality: number): Promise<string> {
-  const bitmap = await createImageBitmap(file)
-  const scale = Math.min(1, maxSize / Math.max(bitmap.width, bitmap.height))
-  const width = Math.round(bitmap.width * scale)
-  const height = Math.round(bitmap.height * scale)
+  let bitmap: ImageBitmap
+  try {
+    bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
+  } catch {
+    throw new ImageError('사진을 읽지 못했어요. 다른 사진으로 시도해 주세요.')
+  }
 
-  const canvas = document.createElement('canvas')
-  canvas.width = width
-  canvas.height = height
-  const ctx = canvas.getContext('2d')
-  if (!ctx) throw new Error('캔버스를 만들 수 없습니다.')
+  try {
+    const scale = Math.min(1, maxSize / Math.max(bitmap.width, bitmap.height))
+    const width = Math.max(1, Math.round(bitmap.width * scale))
+    const height = Math.max(1, Math.round(bitmap.height * scale))
 
-  ctx.drawImage(bitmap, 0, 0, width, height)
-  bitmap.close()
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new ImageError('캔버스를 만들 수 없어요.')
 
-  return canvas.toDataURL('image/jpeg', quality)
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, width, height)
+    ctx.drawImage(bitmap, 0, 0, width, height)
+
+    return canvas.toDataURL('image/jpeg', quality)
+  } finally {
+    bitmap.close()
+  }
 }
 
 /** Vision AI 업로드용 — 요청 크기를 아끼려고 작게 줄인다. 저장하지 않는다. */
 export async function fileToVisionDataUrl(file: File, maxSize = 512): Promise<string> {
+  assertUsable(file)
   return resizeToDataUrl(file, maxSize, 0.85)
 }
 
@@ -33,11 +76,22 @@ export async function fileToVisionDataUrl(file: File, maxSize = 512): Promise<st
  * 화면 표시·확대 보기용으로 저장할 사진.
  *
  * 확대했을 때 소재·패턴이 보여야 해서 Vision용(512px)보다 크게 잡는다. 다만 이 문자열이
- * Firestore 문서 안에 그대로 들어가고 문서 상한이 1MiB라, 1024px·품질 0.82로 타협했다
- * (보통 base64 기준 150~300KB).
+ * Firestore 문서 안에 그대로 들어가고 문서 상한이 1MiB라, 넘치면 해상도를 단계적으로
+ * 낮춰 다시 인코딩한다. 예전에는 그냥 저장을 시도하다 조용히 실패했다.
  */
 export async function fileToDisplayDataUrl(file: File, maxSize = 1024): Promise<string> {
-  return resizeToDataUrl(file, maxSize, 0.82)
+  assertUsable(file)
+
+  for (const [size, quality] of [
+    [maxSize, 0.82],
+    [Math.round(maxSize * 0.75), 0.78],
+    [Math.round(maxSize * 0.5), 0.72],
+  ] as const) {
+    const dataUrl = await resizeToDataUrl(file, size, quality)
+    if (dataUrl.length <= MAX_STORED_CHARS) return dataUrl
+  }
+
+  throw new ImageError('사진 용량을 충분히 줄이지 못했어요. 더 작은 사진으로 올려 주세요.')
 }
 
 /** 이미지 가장자리를 제외한 중앙 영역의 평균색을 구한다 (배경 영향 최소화) */

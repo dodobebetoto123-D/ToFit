@@ -10,15 +10,24 @@ import { fetchLegalManifest, formatEffectiveDate, type LegalDocumentMeta } from 
 import { GENDERS, type Gender } from '@/types'
 
 export function SettingsPage() {
-  const { user, usingMockAuth, emailVerified, updateProfile, resendVerificationEmail, signOut } =
-    useAuth()
+  const {
+    user,
+    usingMockAuth,
+    emailVerified,
+    updateProfile,
+    resendVerificationEmail,
+    refreshEmailVerified,
+    signOut,
+  } = useAuth()
   const navigate = useNavigate()
 
   const [nickname, setNickname] = useState(user?.nickname ?? '')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [sendingVerify, setSendingVerify] = useState(false)
-  const [verifySent, setVerifySent] = useState(false)
+  const [checkingVerify, setCheckingVerify] = useState(false)
+  /** 인증 영역에 보여줄 결과 메시지 — 성공/실패를 모두 알려준다 */
+  const [verifyNotice, setVerifyNotice] = useState<{ text: string; error: boolean } | null>(null)
   const [legalDocs, setLegalDocs] = useState<LegalDocumentMeta[]>([])
 
   useEffect(() => {
@@ -51,11 +60,36 @@ export function SettingsPage() {
 
   async function handleResendVerification() {
     setSendingVerify(true)
+    setVerifyNotice(null)
     try {
       await resendVerificationEmail()
-      setVerifySent(true)
+      setVerifyNotice({
+        text: `${user?.email}로 인증 메일을 보냈어요. 메일함(스팸함 포함)을 확인해 주세요.`,
+        error: false,
+      })
+    } catch (caught) {
+      setVerifyNotice({
+        text: caught instanceof Error ? caught.message : '인증 메일을 보내지 못했어요.',
+        error: true,
+      })
     } finally {
       setSendingVerify(false)
+    }
+  }
+
+  /** 메일의 링크를 누르고 돌아왔을 때 — Firebase는 알아서 알려주지 않으므로 직접 확인한다 */
+  async function handleCheckVerified() {
+    setCheckingVerify(true)
+    setVerifyNotice(null)
+    try {
+      const verified = await refreshEmailVerified()
+      setVerifyNotice(
+        verified
+          ? { text: '인증이 확인됐어요!', error: false }
+          : { text: '아직 인증되지 않았어요. 메일의 링크를 누른 뒤 다시 확인해 주세요.', error: true },
+      )
+    } finally {
+      setCheckingVerify(false)
     }
   }
 
@@ -122,17 +156,36 @@ export function SettingsPage() {
           ) : (
             <>
               <p className="tf-caption">
-                아직 이메일 인증이 완료되지 않았어요. 메일이 오지 않았다면 스팸함을 확인하거나 다시
-                보내보세요.
+                아직 <b>{user.email}</b> 인증이 완료되지 않았어요. 메일이 오지 않았다면 스팸함을
+                확인하거나 다시 보내보세요.
               </p>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleResendVerification}
-                disabled={sendingVerify}
-              >
-                {verifySent ? '다시 보냈어요' : '인증 메일 다시 보내기'}
-              </Button>
+              <div className="tf-inline-form">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleResendVerification}
+                  disabled={sendingVerify}
+                >
+                  {sendingVerify ? '보내는 중…' : '인증 메일 다시 보내기'}
+                </Button>
+                {/* Firebase는 링크를 눌러도 이 탭에 알려주지 않는다 — 직접 확인 버튼이 필요하다 */}
+                <Button
+                  variant="soft"
+                  size="sm"
+                  onClick={handleCheckVerified}
+                  disabled={checkingVerify}
+                >
+                  {checkingVerify ? '확인 중…' : '인증 완료했어요'}
+                </Button>
+              </div>
+              {verifyNotice && (
+                <p
+                  className={verifyNotice.error ? 'tf-error' : 'tf-caption'}
+                  role={verifyNotice.error ? 'alert' : 'status'}
+                >
+                  {verifyNotice.text}
+                </p>
+              )}
             </>
           )}
         </Card>

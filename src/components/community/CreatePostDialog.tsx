@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Chip } from '@/components/ui/Chip'
 import { Icon } from '@/components/ui/Icon'
-import { fileToDisplayDataUrl } from '@/lib/image'
+import { fileToDisplayDataUrl, ImageError } from '@/lib/image'
 import { OUTFIT_PHOTO_THEMES, type CommunityPost, type OutfitPhotoTheme, type SavedOutfit } from '@/types'
 import { PostPhoto } from './PostPhoto'
 
@@ -59,11 +59,16 @@ export function CreatePostDialog({
 
   async function handlePhoto(file: File) {
     setUploadingPhoto(true)
+    setError(null)
     try {
       // 확대 보기에서 볼 수 있게 표시용 해상도로 저장한다.
       setPhotoUrl(await fileToDisplayDataUrl(file))
-    } catch {
-      setError('사진을 불러오지 못했어요. 다시 시도해 주세요.')
+    } catch (caught) {
+      // HEIC·용량 초과 등은 무엇이 문제인지 알려줘야 사용자가 대처할 수 있다.
+      setPhotoUrl(undefined)
+      setError(
+        caught instanceof ImageError ? caught.message : '사진을 불러오지 못했어요. 다시 시도해 주세요.',
+      )
     } finally {
       setUploadingPhoto(false)
     }

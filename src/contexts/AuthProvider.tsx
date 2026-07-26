@@ -135,14 +135,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void updateProfile({ onboarded: true })
   }, [updateProfile])
 
+  /**
+   * 인증 메일을 다시 보낸다.
+   * 예전에는 실패하든 말든 조용히 끝나서 "눌러도 아무 일이 없다"처럼 보였다.
+   * 실패 사유를 사용자가 읽을 수 있는 문장으로 바꿔 던진다.
+   */
   const resendVerificationEmail = useCallback(async () => {
-    if (auth?.currentUser) await sendEmailVerification(auth.currentUser)
+    if (!auth?.currentUser) {
+      throw new Error('로그인 상태를 확인하지 못했어요. 다시 로그인한 뒤 시도해 주세요.')
+    }
+    try {
+      await sendEmailVerification(auth.currentUser)
+    } catch (caught) {
+      const code = (caught as { code?: string })?.code
+      if (code === 'auth/too-many-requests') {
+        throw new Error('요청이 너무 잦아요. 잠시 후 다시 시도해 주세요.')
+      }
+      throw new Error('인증 메일을 보내지 못했어요. 잠시 후 다시 시도해 주세요.')
+    }
   }, [])
 
+  /** 메일의 링크를 누른 뒤 상태를 다시 확인한다. 인증 완료 여부를 돌려준다. */
   const refreshEmailVerified = useCallback(async () => {
-    if (!auth?.currentUser) return
+    if (!auth?.currentUser) return true
     await auth.currentUser.reload()
-    setEmailVerified(auth.currentUser.emailVerified)
+    const verified = auth.currentUser.emailVerified
+    setEmailVerified(verified)
+    return verified
   }, [])
 
   const value = useMemo<AuthContextValue>(
