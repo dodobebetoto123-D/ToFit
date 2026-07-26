@@ -61,7 +61,7 @@ export function HomePage() {
   const [reshuffle, setReshuffle] = useState(0)
   const [notice, setNotice] = useState<string | null>(null)
 
-  // 규칙 기반 추천을 즉시 계산하고, Groq가 reason/mascotComment 문구만 백그라운드에서 다듬는다.
+  // 규칙 기반 추천을 즉시 계산하고, AI가 reason/mascotComment 문구만 백그라운드에서 다듬는다.
   const { coordinate, aiEnhancing } = useOutfitRecommendation({
     closet,
     profile: user,

@@ -1,21 +1,20 @@
 # ToFit AI 프록시 (Cloudflare Worker)
 
-Groq API 키를 브라우저에 노출하지 않기 위한 중계 서버입니다.
+Gemini API 키를 브라우저에 노출하지 않기 위한 중계 서버입니다.
 키는 이 Worker의 시크릿에만 저장되고, 앱에는 Worker 주소만 들어갑니다.
 
 ```
-브라우저 → Cloudflare Worker (키 보관) → Groq API
+브라우저 → Cloudflare Worker (키 보관) → Gemini API
 ```
 
 ## 배포 순서
 
-### 1. Groq 키 재발급
+### 1. Gemini 키 발급
 
-기존 키는 이미 공개된 번들에 포함돼 유출된 상태입니다. **반드시 폐기하고 새로 만드세요.**
+1. https://aistudio.google.com/apikey 접속 (구글 계정 필요, 카드 등록 없음)
+2. `Create API key` → 복사해 둡니다
 
-1. https://console.groq.com/keys 접속
-2. 기존 키 삭제(Revoke)
-3. `Create API Key`로 새 키 발급 → 복사해 둡니다
+> Gemini API 약관상 **만 18세 이상**만 사용할 수 있습니다.
 
 ### 2. Cloudflare 가입
 
@@ -40,7 +39,7 @@ https://tofit-ai-proxy.<계정이름>.workers.dev
 ### 4. 키를 시크릿으로 등록
 
 ```bash
-npx wrangler secret put GROQ_API_KEY
+npx wrangler secret put GEMINI_API_KEY
 ```
 
 프롬프트가 뜨면 2단계에서 발급받은 **새 키**를 붙여넣습니다.
@@ -75,12 +74,16 @@ curl -X POST https://tofit-ai-proxy.<계정이름>.workers.dev \
 
 `{"content":"{\"reason\":...}"}` 형태로 오면 정상입니다.
 
+> 한글이 포함된 요청을 셸에서 `-d '...'`로 보내면 인코딩이 깨져 모델이 `??`를 받습니다.
+> 반드시 UTF-8 파일로 저장해 `--data-binary @payload.json`으로 보내세요.
+
 ## 안전장치
 
 - 모델과 시스템 프롬프트가 Worker에 고정돼 있어, 범용 LLM 프록시로 악용하기 어렵습니다
 - `action`은 `classify`와 `copy` 두 가지만 허용합니다
 - `wrangler.toml`의 `ALLOWED_ORIGINS`에 없는 출처는 403으로 막습니다
-- 429/5xx는 Worker가 최대 3회까지 자동 재시도합니다 (Groq 무료 등급은 분당 토큰 한도가 12,000으로 빡빡합니다)
+- 429/5xx는 Worker가 최대 3회까지 자동 재시도합니다
+- `responseSchema`로 출력 형식을 강제해, 카테고리·소재는 정해진 값 중에서만 나옵니다
 
 > CORS는 브라우저에서 오는 요청만 막습니다. curl 같은 직접 호출까지 완전히 차단하려면
 > Cloudflare 대시보드의 Rate Limiting을 추가로 걸어두세요.

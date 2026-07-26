@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { generateOutfitCopy, isGroqConfigured, type OutfitCopyResult } from '@/lib/groq'
+import { generateOutfitCopy, isAiConfigured, type OutfitCopyResult } from '@/lib/ai'
 import { majorCategoryLabel, personalColorLabel, situationLabel } from '@/lib/labels'
 import { recommendCoordinates, type RecommendResult } from '@/services/recommend'
 import type { ClothingItem, Situation, UserProfile, WeatherSnapshot } from '@/types'
@@ -16,7 +16,7 @@ interface UseOutfitRecommendationInput {
 
 /**
  * 규칙 기반 추천(recommendCoordinates)으로 코디 후보 3개를 즉시 계산해 렌더링하고,
- * 백그라운드에서 Groq에게 **선택된 후보의** reason/mascotComment 문구만 자연스럽게
+ * 백그라운드에서 AI에게 **선택된 후보의** reason/mascotComment 문구만 자연스럽게
  * 다시 쓰게 한다. 점수 계산(breakdown)은 항상 규칙 기반 결과 그대로 — AI는 문구만
  * 담당한다. 후보 3개 전부에 AI 호출을 하면 비용이 3배가 되니 선택된 것만 보강한다.
  */
@@ -70,7 +70,7 @@ export function useOutfitRecommendation(input: UseOutfitRecommendationInput) {
   const coordinateId = base?.coordinate.id ?? null
 
   useEffect(() => {
-    if (!coordinateId || !isGroqConfigured) return
+    if (!coordinateId || !isAiConfigured) return
 
     const cached = copyCache.current.get(coordinateId)
     if (cached) {

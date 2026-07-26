@@ -1,23 +1,28 @@
 /**
  * ToFit AI 프록시 — Cloudflare Worker
  *
- * Groq API 키를 브라우저에 내려보내지 않기 위한 중계 서버다.
- * 키는 Worker 시크릿(GROQ_API_KEY)에만 있고 클라이언트 번들에는 들어가지 않는다.
+ * Gemini API 키를 브라우저에 내려보내지 않기 위한 중계 서버다.
+ * 키는 Worker 시크릿(GEMINI_API_KEY)에만 있고 클라이언트 번들에는 들어가지 않는다.
+ *
+ * Groq에서 Gemini로 옮겼다. 이유:
+ *  - Groq 무료 등급은 분당 토큰이 12,000이라 429가 잦았다 (Gemini는 100만)
+ *  - 무료 등급에서 쓸 수 있는 Groq 모델들이 한국어 세부 정보를 자주 틀렸다
+ *    (아이보리→흰색, 슬랙스→블라우스처럼 실제 코디에 없는 걸 지어냄)
  *
  * 아무나 이걸 범용 LLM 프록시로 쓰지 못하도록:
  *  - 모델과 시스템 프롬프트를 서버에서 고정한다 (클라이언트는 데이터만 보낸다)
  *  - 허용된 action 두 개(classify / copy) 외에는 거부한다
- *  - max_tokens와 이미지 크기에 상한을 둔다
+ *  - 출력 토큰과 이미지 크기에 상한을 둔다
  *  - CORS를 허용 오리진으로 제한한다
  *
  * 배포: worker/README.md 참고
  */
 
-const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
+const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
 
 const MODELS = {
-  vision: 'qwen/qwen3.6-27b',
-  reasoning: 'qwen/qwen3.6-27b',
+  vision: 'gemini-3.6-flash',
+  reasoning: 'gemini-3.6-flash',
 }
 
 /**
@@ -64,27 +69,23 @@ function json(body, status, headers) {
   })
 }
 
-/** 429·5xx는 잠깐 기다렸다 다시 시도한다 — Groq 무료 등급은 분당 토큰 한도가 빡빡하다 */
-async function callGroqWithRetry(payload, apiKey, attempts = 3) {
-  let lastStatus = 0
+/** 429·5xx는 잠깐 기다렸다 다시 시도한다 */
+async function callGeminiWithRetry(model, payload, apiKey, attempts = 3) {
+  let last = null
 
   for (let attempt = 0; attempt < attempts; attempt += 1) {
-    const response = await fetch(GROQ_ENDPOINT, {
+    const response = await fetch(`${GEMINI_BASE}/${model}:generateContent`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify(payload),
     })
 
     if (response.ok) return response
-    lastStatus = response.status
+    last = response
 
     const retriable = response.status === 429 || response.status >= 500
     if (!retriable || attempt === attempts - 1) return response
 
-    // Retry-After를 주면 그걸 따르고, 없으면 0.6s → 1.8s로 늘려가며 기다린다.
     const retryAfter = Number(response.headers.get('Retry-After'))
     const waitMs = Number.isFinite(retryAfter) && retryAfter > 0
       ? Math.min(retryAfter * 1000, 5000)
@@ -92,7 +93,22 @@ async function callGroqWithRetry(payload, apiKey, attempts = 3) {
     await new Promise((resolve) => setTimeout(resolve, waitMs))
   }
 
-  return new Response(null, { status: lastStatus || 502 })
+  return last ?? new Response(null, { status: 502 })
+}
+
+/** Gemini 응답에서 본문 텍스트만 뽑는다 (parts가 여러 개로 쪼개져 올 수 있다) */
+function extractText(data) {
+  const parts = data?.candidates?.[0]?.content?.parts
+  if (!Array.isArray(parts)) return null
+  const text = parts.map((part) => part?.text ?? '').join('').trim()
+  return text.length > 0 ? text : null
+}
+
+/** data URL을 Gemini가 받는 inlineData 형태로 바꾼다 */
+function toInlineData(dataUrl) {
+  const match = /^data:(image\/[a-zA-Z+]+);base64,(.+)$/.exec(dataUrl)
+  if (!match) return null
+  return { inlineData: { mimeType: match[1], data: match[2] } }
 }
 
 function buildClassifyPayload(body) {
@@ -103,34 +119,41 @@ function buildClassifyPayload(body) {
   if (imageDataUrl.length > MAX_IMAGE_CHARS) {
     return { error: '이미지가 너무 큽니다.' }
   }
+  const inline = toInlineData(imageDataUrl)
+  if (!inline) return { error: '이미지 형식을 읽지 못했습니다.' }
 
   return {
+    model: MODELS.vision,
     payload: {
-      model: MODELS.vision,
-      temperature: 0.3,
-      max_tokens: 300,
-      reasoning_effort: 'none',
-      response_format: { type: 'json_object' },
-      messages: [
-        {
-          role: 'system',
-          content:
-            '너는 패션 커머스 앱의 옷 사진 분류기다. 사용자가 올린 옷 사진 한 장을 보고 아래 JSON 스키마로만 답한다. ' +
-            '설명 문장 없이 JSON 객체 하나만 출력한다.\n' +
-            `majorCategory는 다음 중 하나: ${MAJOR_CATEGORIES.join(', ')}\n` +
-            `minorCategory는 다음 중 하나: ${MINOR_CATEGORIES.join(', ')}\n` +
-            `material은 다음 중 하나: ${MATERIALS.join(', ')}\n` +
-            'color는 대표색의 HEX 코드(#rrggbb), colorName은 그 색의 한글 이름(예: "아이보리").\n' +
-            '스키마: {"majorCategory":"...","minorCategory":"...","color":"#xxxxxx","colorName":"...","material":"..."}',
+      systemInstruction: {
+        parts: [
+          {
+            text:
+              '너는 패션 커머스 앱의 옷 사진 분류기다. 사용자가 올린 옷 사진 한 장을 보고 아래 JSON 스키마로만 답한다.\n' +
+              `majorCategory는 다음 중 하나: ${MAJOR_CATEGORIES.join(', ')}\n` +
+              `minorCategory는 다음 중 하나: ${MINOR_CATEGORIES.join(', ')}\n` +
+              `material은 다음 중 하나: ${MATERIALS.join(', ')}\n` +
+              'color는 대표색의 HEX 코드(#rrggbb), colorName은 그 색의 한글 이름(예: "아이보리").',
+          },
+        ],
+      },
+      contents: [{ role: 'user', parts: [{ text: '이 옷을 분류해줘.' }, inline] }],
+      generationConfig: {
+        temperature: 0.2,
+        maxOutputTokens: 2000,
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: 'OBJECT',
+          properties: {
+            majorCategory: { type: 'STRING', enum: MAJOR_CATEGORIES },
+            minorCategory: { type: 'STRING', enum: MINOR_CATEGORIES },
+            color: { type: 'STRING' },
+            colorName: { type: 'STRING' },
+            material: { type: 'STRING', enum: MATERIALS },
+          },
+          required: ['majorCategory', 'minorCategory', 'color', 'colorName', 'material'],
         },
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: '이 옷을 분류해줘.' },
-            { type: 'image_url', image_url: { url: imageDataUrl } },
-          ],
-        },
-      ],
+      },
     },
   }
 }
@@ -147,47 +170,59 @@ function buildCopyPayload(body) {
   const itemList = items
     .map(
       (item) =>
-        `- ${text(item.categoryLabel)}: ${text(item.brand)} ${text(item.name)} (${text(item.colorName)})`,
+        `- ${text(item.categoryLabel)}: ${text(item.brand)} ${text(item.name)} (색: ${text(item.colorName)})`,
     )
     .join('\n')
 
   return {
+    model: MODELS.reasoning,
     payload: {
-      model: MODELS.reasoning,
-      temperature: 0.2,
-      max_tokens: 350,
-      // 'low' 이상을 주면 <think>에 토큰을 다 써서 응답이 잘리거나 빈 문구가 나온다.
-      // 무료 등급에서 쓸 수 있는 모델(llama-3.3-70b / gpt-oss-120b / qwen3.6-27b)을 모두
-      // 비교했을 때 이 조합이 그나마 가장 정확했다. 그래도 틀릴 때가 있어 클라이언트에서
-      // 검증 후 규칙 기반 문구로 폴백한다 (src/lib/groq.ts).
-      reasoning_effort: 'none',
-      response_format: { type: 'json_object' },
-      messages: [
-        {
-          role: 'system',
-          content:
-            '너는 패션 코디 추천 앱 ToFit의 AI 스타일리스트다. 친근한 존댓말(-해요/-예요체)을 쓴다.\n' +
-            '아래 규칙을 반드시 지킨다.\n' +
-            '1. 색상은 입력에 적힌 색 이름을 글자 그대로만 쓴다. "아이보리"를 "흰색"으로, ' +
-            '"그레이"를 "베이지"로 바꿔 부르지 않는다.\n' +
-            '2. 목록에 없는 아이템·브랜드·색을 추가하지 않는다.\n' +
-            '3. 퍼스널컬러는 입력에 적힌 이름을 그대로 쓴다. "여름 쿨"을 "봄"으로 바꾸지 않는다.\n' +
-            '4. 강수확률은 습도가 아니다. 헷갈리지 말고 입력 그대로 해석한다.\n' +
-            '5. 확신이 없으면 그 부분은 언급하지 않는다. 지어내는 것보다 짧은 편이 낫다.\n' +
-            '반드시 JSON 객체 하나만 출력한다: ' +
-            '{"reason":"2~4문장, 날씨·상황·퍼스널컬러를 근거로 든 추천 이유","mascotComment":"이모지 1개를 포함한 짧은 한 문장, 마스코트가 말하듯 다정하게"}',
-        },
+      systemInstruction: {
+        parts: [
+          {
+            text:
+              '너는 패션 코디 추천 앱 ToFit의 AI 스타일리스트다. 친근한 존댓말(-해요/-예요체)을 쓴다.\n' +
+              '아래 규칙을 반드시 지킨다.\n' +
+              '1. 색상은 입력에 적힌 색 이름을 글자 그대로만 쓴다. "아이보리"를 "흰색"으로, ' +
+              '"그레이"를 "베이지"로 바꿔 부르지 않는다.\n' +
+              '2. 목록에 없는 아이템·브랜드·색을 추가하지 않는다.\n' +
+              '3. 퍼스널컬러는 입력에 적힌 이름을 그대로 쓴다.\n' +
+              '4. 강수확률은 습도가 아니다. 입력 그대로 해석한다.\n' +
+              '5. 입력에 있는 정보만으로 충분하다. 정보가 부족하다는 말은 하지 않는다.\n' +
+              'reason은 2~4문장으로 날씨·상황·퍼스널컬러를 근거로 든 추천 이유를 쓴다.\n' +
+              'mascotComment는 이모지 1개를 포함한 짧은 한 문장으로, 마스코트가 말하듯 다정하게 쓴다.',
+          },
+        ],
+      },
+      contents: [
         {
           role: 'user',
-          content: [
-            `상황: ${text(context.situationLabel)}`,
-            `날씨: ${text(context.weatherSummary)}`,
-            `사용자: ${text(context.nickname)}님, 퍼스널컬러 ${text(context.personalColorLabel)}`,
-            '코디 구성:',
-            itemList,
-          ].join('\n'),
+          parts: [
+            {
+              text: [
+                `상황: ${text(context.situationLabel)}`,
+                `날씨: ${text(context.weatherSummary)}`,
+                `사용자: ${text(context.nickname)}님, 퍼스널컬러 ${text(context.personalColorLabel)}`,
+                '코디 구성:',
+                itemList,
+              ].join('\n'),
+            },
+          ],
         },
       ],
+      generationConfig: {
+        temperature: 0.4,
+        maxOutputTokens: 2000,
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: 'OBJECT',
+          properties: {
+            reason: { type: 'STRING' },
+            mascotComment: { type: 'STRING' },
+          },
+          required: ['reason', 'mascotComment'],
+        },
+      },
     },
   }
 }
@@ -205,8 +240,8 @@ export default {
     if (cors['Access-Control-Allow-Origin'] === 'null') {
       return json({ error: '허용되지 않은 출처입니다.' }, 403, cors)
     }
-    if (!env.GROQ_API_KEY) {
-      return json({ error: 'GROQ_API_KEY 시크릿이 설정되지 않았습니다.' }, 500, cors)
+    if (!env.GEMINI_API_KEY) {
+      return json({ error: 'GEMINI_API_KEY 시크릿이 설정되지 않았습니다.' }, 500, cors)
     }
 
     let body
@@ -216,6 +251,7 @@ export default {
       return json({ error: 'JSON 본문을 읽지 못했습니다.' }, 400, cors)
     }
 
+
     let built
     if (body.action === 'classify') built = buildClassifyPayload(body)
     else if (body.action === 'copy') built = buildCopyPayload(body)
@@ -223,21 +259,20 @@ export default {
 
     if (built.error) return json({ error: built.error }, 400, cors)
 
-    const response = await callGroqWithRetry(built.payload, env.GROQ_API_KEY)
+    const response = await callGeminiWithRetry(built.model, built.payload, env.GEMINI_API_KEY)
     if (!response.ok) {
-      // Groq가 알려주는 실패 사유를 그대로 붙여준다 — 상태 코드만으로는 원인을 못 찾는다.
+      // Gemini가 알려주는 실패 사유를 그대로 붙여준다 — 상태 코드만으로는 원인을 못 찾는다.
       // (에러 본문에 API 키가 들어가지는 않는다)
       const detail = await response.text().catch(() => '')
-      console.log(`Groq ${response.status} (${body.action}): ${detail.slice(0, 500)}`)
+      console.log(`Gemini ${response.status} (${body.action}): ${detail.slice(0, 500)}`)
       return json(
-        { error: `Groq 오류 ${response.status}`, detail: detail.slice(0, 500) },
+        { error: `Gemini 오류 ${response.status}`, detail: detail.slice(0, 500) },
         response.status,
         cors,
       )
     }
 
     const data = await response.json()
-    const content = data?.choices?.[0]?.message?.content ?? null
-    return json({ content }, 200, cors)
+    return json({ content: extractText(data) }, 200, cors)
   },
 }

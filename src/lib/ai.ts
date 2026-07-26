@@ -1,7 +1,7 @@
 /**
  * AI 기능 클라이언트.
  *
- * Groq를 직접 부르지 않고 Cloudflare Worker 프록시(`VITE_AI_PROXY_URL`)를 거친다.
+ * Gemini를 직접 부르지 않고 Cloudflare Worker 프록시(`VITE_AI_PROXY_URL`)를 거친다.
  * API 키는 Worker 시크릿에만 있고 이 번들에는 들어가지 않는다 — 모델 선택과
  * 시스템 프롬프트도 Worker가 들고 있어서, 여기서는 데이터만 보낸다.
  * 배포 방법은 `worker/README.md` 참고.
@@ -23,9 +23,9 @@ import {
 } from '@/types'
 
 const proxyUrl = import.meta.env.VITE_AI_PROXY_URL
-export const isGroqConfigured = typeof proxyUrl === 'string' && proxyUrl.length > 0
+export const isAiConfigured = typeof proxyUrl === 'string' && proxyUrl.length > 0
 
-if (!isGroqConfigured && import.meta.env.DEV) {
+if (!isAiConfigured && import.meta.env.DEV) {
   console.info(
     '[ToFit] VITE_AI_PROXY_URL이 없어 AI 기능 없이 규칙 기반 로직만 사용합니다. ' +
       '설정 방법은 worker/README.md 참고.',
@@ -44,7 +44,7 @@ type ProxyRequest =
   | { action: 'copy'; context: OutfitCopyContext }
 
 async function callProxy(request: ProxyRequest): Promise<string | null> {
-  if (!isGroqConfigured) return null
+  if (!isAiConfigured) return null
 
   try {
     const response = await fetch(proxyUrl, {

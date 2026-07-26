@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Chip } from '@/components/ui/Chip'
 import { Icon } from '@/components/ui/Icon'
-import { classifyClothingPhoto, isGroqConfigured } from '@/lib/groq'
+import { classifyClothingPhoto, isAiConfigured } from '@/lib/ai'
 import {
   extractDominantColor,
   fileToDisplayDataUrl,
@@ -118,7 +118,7 @@ export function AddClothingDialog({ open, userId, onClose, onSubmit }: AddClothi
       setPhotoHint('사진에서 색을 읽지 못했어요. 아래에서 직접 골라 주세요.')
     }
 
-    if (!isGroqConfigured || !dataUrl) return
+    if (!isAiConfigured || !dataUrl) return
 
     // Vision AI로 카테고리·소재까지 보강 — 실패해도 위 캔버스 결과가 그대로 남는다.
     setAiAnalyzing(true)
@@ -205,7 +205,7 @@ export function AddClothingDialog({ open, userId, onClose, onSubmit }: AddClothi
               {aiAnalyzing
                 ? 'AI가 사진을 분석하고 있어요...'
                 : (photoHint ??
-                  (isGroqConfigured
+                  (isAiConfigured
                     ? '사진을 올리면 AI가 카테고리 · 색상 · 소재를 자동으로 채워드려요.'
                     : '카테고리 자동 인식(Vision AI)은 서버 연동 후 지원됩니다.'))}
             </p>
