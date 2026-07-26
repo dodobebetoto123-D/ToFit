@@ -8,6 +8,7 @@ import { BrandsPage } from '@/pages/BrandsPage'
 import { ClosetPage } from '@/pages/ClosetPage'
 import { CommunityPage } from '@/pages/CommunityPage'
 import { HomePage } from '@/pages/HomePage'
+import { LegalPage } from '@/pages/LegalPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { OnboardingPage } from '@/pages/OnboardingPage'
@@ -42,6 +43,7 @@ export default function App() {
                 <Route path="/notes" element={<StyleNotePage />} />
                 <Route path="/brands" element={<BrandsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/legal" element={<LegalPage />} />
 
                 <Route path="*" element={<NotFoundPage />} />
               </Route>

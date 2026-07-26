@@ -1,10 +1,12 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { Logo } from '@/components/brand/Logo'
 import { Mascot } from '@/components/brand/Mascot'
+import { LegalDocumentDialog } from '@/components/legal/LegalDocumentDialog'
 import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/hooks/useAuth'
 import { cn } from '@/lib/utils'
+import { fetchLegalManifest, type LegalDocumentMeta } from '@/services/legal'
 
 type Mode = 'signIn' | 'signUp'
 
@@ -16,9 +18,42 @@ export function LoginPage() {
   const [email, setEmail] = useState('minji@tofit.app')
   const [password, setPassword] = useState('tofit1234')
   const [nickname, setNickname] = useState('')
-  const [agreed, setAgreed] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+
+  // 약관 동의 — 문서 목록은 manifest에서 받아오고, 동의 여부는 문서 id별로 관리한다.
+  const [legalDocs, setLegalDocs] = useState<LegalDocumentMeta[]>([])
+  const [agreedIds, setAgreedIds] = useState<string[]>([])
+  const [viewingDoc, setViewingDoc] = useState<LegalDocumentMeta | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    fetchLegalManifest()
+      .then((list) => {
+        if (!cancelled) setLegalDocs(list.filter((doc) => doc.consent !== 'none'))
+      })
+      .catch(() => {
+        // 목록을 못 받아도 가입 자체를 막지는 않는다 — 아래에서 기본 문구로 폴백한다.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const requiredDocs = useMemo(
+    () => legalDocs.filter((doc) => doc.consent === 'required'),
+    [legalDocs],
+  )
+  const allAgreed = legalDocs.length > 0 && legalDocs.every((doc) => agreedIds.includes(doc.id))
+  const requiredSatisfied = requiredDocs.every((doc) => agreedIds.includes(doc.id))
+
+  function toggleAgreement(id: string) {
+    setAgreedIds((prev) => (prev.includes(id) ? prev.filter((v) => v !== id) : [...prev, id]))
+  }
+
+  function toggleAll(checked: boolean) {
+    setAgreedIds(checked ? legalDocs.map((doc) => doc.id) : [])
+  }
 
   if (ready && user) return <Navigate to={onboarded ? '/' : '/onboarding'} replace />
 
@@ -26,8 +61,8 @@ export function LoginPage() {
     event.preventDefault()
     setError(null)
 
-    if (mode === 'signUp' && !agreed) {
-      setError('이용약관에 동의해 주세요.')
+    if (mode === 'signUp' && !requiredSatisfied) {
+      setError('필수 약관에 동의해 주세요.')
       return
     }
 
@@ -120,16 +155,48 @@ export function LoginPage() {
                 />
               </label>
 
-              <label className="tf-check">
-                <input
-                  type="checkbox"
-                  checked={agreed}
-                  onChange={(event) => setAgreed(event.target.checked)}
-                />
-                <span>
-                  <strong>[필수]</strong> 이용약관 및 개인정보 처리방침에 동의합니다.
-                </span>
-              </label>
+              <div className="tf-consent">
+                <label className="tf-check tf-consent__all">
+                  <input
+                    type="checkbox"
+                    checked={allAgreed}
+                    onChange={(event) => toggleAll(event.target.checked)}
+                    disabled={legalDocs.length === 0}
+                  />
+                  <span>
+                    <strong>전체 동의</strong>
+                  </span>
+                </label>
+
+                <ul className="tf-consent__list">
+                  {legalDocs.map((doc) => (
+                    <li key={doc.id} className="tf-consent__item">
+                      <label className="tf-check">
+                        <input
+                          type="checkbox"
+                          checked={agreedIds.includes(doc.id)}
+                          onChange={() => toggleAgreement(doc.id)}
+                        />
+                        <span>
+                          <strong>[{doc.consent === 'required' ? '필수' : '선택'}]</strong>{' '}
+                          {doc.title}에 동의합니다.
+                        </span>
+                      </label>
+                      <button
+                        type="button"
+                        className="tf-consent__view"
+                        onClick={() => setViewingDoc(doc)}
+                      >
+                        보기
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+
+                {legalDocs.length === 0 && (
+                  <p className="tf-caption">약관을 불러오는 중이에요…</p>
+                )}
+              </div>
             </>
           )}
 
@@ -151,6 +218,8 @@ export function LoginPage() {
           </p>
         )}
       </section>
+
+      <LegalDocumentDialog doc={viewingDoc} onClose={() => setViewingDoc(null)} />
     </div>
   )
 }

@@ -1,0 +1,40 @@
+{
+  "documents": [
+    {
+      "id": "terms",
+      "title": "이용약관",
+      "version": "1.0",
+      "effectiveDate": "2026-07-26",
+      "file": "terms.md",
+      "consent": "required",
+      "summary": "ToFit 서비스 이용에 관한 기본 약속이에요."
+    },
+    {
+      "id": "privacy",
+      "title": "개인정보처리방침",
+      "version": "1.0",
+      "effectiveDate": "2026-07-26",
+      "file": "privacy.md",
+      "consent": "required",
+      "summary": "어떤 정보를 왜 모으고 어떻게 지키는지 알려드려요."
+    },
+    {
+      "id": "marketing",
+      "title": "마케팅 정보 수신 동의",
+      "version": "1.0",
+      "effectiveDate": "2026-07-26",
+      "file": "marketing.md",
+      "consent": "optional",
+      "summary": "새 기능·이벤트 소식을 받아볼지 선택할 수 있어요."
+    },
+    {
+      "id": "opensource",
+      "title": "오픈소스 라이선스",
+      "version": "1.0",
+      "effectiveDate": "2026-07-26",
+      "file": "opensource.md",
+      "consent": "none",
+      "summary": "ToFit이 사용하는 오픈소스 소프트웨어 목록이에요."
+    }
+  ]
+}

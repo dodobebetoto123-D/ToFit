@@ -1,10 +1,12 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Chip } from '@/components/ui/Chip'
+import { Icon } from '@/components/ui/Icon'
 import { useAuth } from '@/hooks/useAuth'
 import { genderLabel } from '@/lib/labels'
+import { fetchLegalManifest, formatEffectiveDate, type LegalDocumentMeta } from '@/services/legal'
 import { GENDERS, type Gender } from '@/types'
 
 export function SettingsPage() {
@@ -17,6 +19,21 @@ export function SettingsPage() {
   const [saved, setSaved] = useState(false)
   const [sendingVerify, setSendingVerify] = useState(false)
   const [verifySent, setVerifySent] = useState(false)
+  const [legalDocs, setLegalDocs] = useState<LegalDocumentMeta[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+    fetchLegalManifest()
+      .then((list) => {
+        if (!cancelled) setLegalDocs(list)
+      })
+      .catch(() => {
+        // 목록을 못 받아도 설정 화면의 나머지는 그대로 동작해야 한다.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   if (!user) return null
 
@@ -120,6 +137,28 @@ export function SettingsPage() {
           )}
         </Card>
       )}
+
+      <Card className="tf-reveal" icon="📄" title="약관 및 정책">
+        {legalDocs.length === 0 ? (
+          <p className="tf-caption">문서를 불러오는 중이에요…</p>
+        ) : (
+          <ul className="tf-linklist">
+            {legalDocs.map((doc) => (
+              <li key={doc.id}>
+                <Link to={`/legal?doc=${doc.id}`} className="tf-linklist__row">
+                  <span className="tf-linklist__text">
+                    <span className="tf-linklist__title">{doc.title}</span>
+                    <span className="tf-micro">
+                      v{doc.version} · {formatEffectiveDate(doc.effectiveDate)} 시행
+                    </span>
+                  </span>
+                  <Icon name="chevron-right" size={17} />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
 
       <Card className="tf-reveal" icon="🚪" title="로그아웃">
         <p className="tf-caption">다른 계정으로 다시 로그인할 수 있어요.</p>

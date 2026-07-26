@@ -1,5 +1,6 @@
 import { Avatar } from '@/components/ui/Avatar'
 import { Icon } from '@/components/ui/Icon'
+import { useProfileDirectory } from '@/hooks/useProfileDirectory'
 import { cn, fromNow } from '@/lib/utils'
 import type { CommunityPost } from '@/types'
 import { PostPhoto } from './PostPhoto'
@@ -11,6 +12,11 @@ interface PostCardProps {
 }
 
 export function PostCard({ post, onToggleLike, onOpen }: PostCardProps) {
+  // 저장된 닉네임이 아니라 작성자의 "현재" 닉네임을 보여준다.
+  const { nicknameOf, avatarColorOf } = useProfileDirectory()
+  const nickname = nicknameOf(post.authorId, post.authorNickname)
+  const avatarColor = avatarColorOf(post.authorId, post.authorAvatarColor)
+
   return (
     <article className="tf-postcard">
       <button
@@ -28,8 +34,8 @@ export function PostCard({ post, onToggleLike, onOpen }: PostCardProps) {
 
       <div className="tf-postcard__body">
         <div className="tf-postcard__author">
-          <Avatar nickname={post.authorNickname} color={post.authorAvatarColor} size={24} />
-          <span className="tf-postcard__nickname tf-truncate">{post.authorNickname}</span>
+          <Avatar nickname={nickname} color={avatarColor} size={24} />
+          <span className="tf-postcard__nickname tf-truncate">{nickname}</span>
           <span className="tf-micro">{fromNow(post.createdAt)}</span>
         </div>
 

@@ -15,6 +15,7 @@ import { useAppData } from '@/hooks/useAppData'
 import { useAuth } from '@/hooks/useAuth'
 import { useOutfitRecommendation } from '@/hooks/useOutfitRecommendation'
 import { useWeather } from '@/hooks/useWeather'
+import { brandsForStyles, buildBrandUrl } from '@/lib/brands'
 import {
   bodyShapeLabel,
   bodyShapeSummary,
@@ -22,6 +23,7 @@ import {
   personalColorLabel,
   situationEmoji,
   situationLabel,
+  styleTagLabel,
 } from '@/lib/labels'
 import { cn } from '@/lib/utils'
 import { MAJOR_CATEGORIES, type MajorCategory, type Situation } from '@/types'
@@ -80,6 +82,12 @@ export function HomePage() {
   const popularPosts = useMemo(
     () => [...posts].sort((a, b) => b.likeCount - a.likeCount).slice(0, 4),
     [posts],
+  )
+
+  // 내 선호 스타일과 겹치는 브랜드를 우선으로 4개만 — 전체 목록은 브랜드 추천 페이지에 있다.
+  const suggestedBrands = useMemo(
+    () => brandsForStyles(user?.preferredStyles ?? [], 4),
+    [user?.preferredStyles],
   )
 
   function handleReshuffle() {
@@ -299,6 +307,48 @@ export function HomePage() {
         <div className="tf-grid tf-grid--posts tf-stagger">
           {popularPosts.map((post) => (
             <PostCard key={post.id} post={post} onToggleLike={toggleLike} />
+          ))}
+        </div>
+      </Card>
+
+      {/* ── 브랜드 추천 (커뮤니티 아래) ───────────────────── */}
+      <Card
+        className="tf-reveal"
+        icon="🏷️"
+        title="내 스타일 브랜드 추천"
+        action={
+          <Link to="/brands" className="tf-textlink">
+            더보기
+            <Icon name="chevron-right" size={15} />
+          </Link>
+        }
+      >
+        <div className="tf-grid tf-grid--brands tf-stagger">
+          {suggestedBrands.map((brand) => (
+            <div key={brand.name} className="tf-brandmini">
+              <p className="tf-brandmini__name">{brand.name}</p>
+              <p className="tf-caption">{brand.description}</p>
+              <div className="tf-chipset">
+                {brand.styles.map((tag) => (
+                  <Chip key={tag} size="sm" readOnly>
+                    {styleTagLabel[tag]}
+                  </Chip>
+                ))}
+                <Chip size="sm" readOnly tone="mint">
+                  {brand.priceTier}
+                </Chip>
+              </div>
+              <Button
+                as="a"
+                href={buildBrandUrl(brand.name)}
+                target="_blank"
+                rel="noopener noreferrer"
+                variant="soft"
+                size="sm"
+              >
+                무신사에서 보기
+              </Button>
+            </div>
           ))}
         </div>
       </Card>

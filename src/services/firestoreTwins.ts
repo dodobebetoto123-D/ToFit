@@ -64,6 +64,16 @@ export async function fetchPublicProfilesByIds(uids: string[]): Promise<PublicPr
     .filter(isDisplayable)
 }
 
+/**
+ * 공개 프로필 전체 실시간 구독 — 닉네임 조회 디렉터리에 쓴다.
+ * 정렬을 걸지 않아 stats가 아직 없는 문서도 빠짐없이 들어온다.
+ */
+export function subscribeAllPublicProfiles(onChange: (profiles: PublicProfile[]) => void) {
+  return onSnapshot(publicProfilesCollection(), (snap) =>
+    onChange(snap.docs.map(normalizeProfile).filter(isDisplayable)),
+  )
+}
+
 /** 활동 랭킹 실시간 구독 — activityScore 내림차순 */
 export function subscribeActivityRanking(onChange: (profiles: PublicProfile[]) => void) {
   const q = query(publicProfilesCollection(), orderBy('stats.activityScore', 'desc'))

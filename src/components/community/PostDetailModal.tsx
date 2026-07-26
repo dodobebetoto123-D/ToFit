@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
+import { useProfileDirectory } from '@/hooks/useProfileDirectory'
 import { majorCategoryLabel, minorCategoryLabel } from '@/lib/labels'
 import { fromNow } from '@/lib/utils'
 import {
@@ -33,6 +34,8 @@ export function PostDetailModal({
   onDelete,
 }: PostDetailModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
+  // 글·댓글 모두 저장된 닉네임 대신 작성자의 현재 닉네임을 보여준다.
+  const { nicknameOf, avatarColorOf } = useProfileDirectory()
   const [comments, setComments] = useState<PostComment[]>([])
   const [commentText, setCommentText] = useState('')
   const [posting, setPosting] = useState(false)
@@ -110,9 +113,13 @@ export function PostDetailModal({
         </div>
 
         <div className="tf-postdetail__author">
-          <Avatar nickname={post.authorNickname} color={post.authorAvatarColor} size={32} />
+          <Avatar
+            nickname={nicknameOf(post.authorId, post.authorNickname)}
+            color={avatarColorOf(post.authorId, post.authorAvatarColor)}
+            size={32}
+          />
           <div className="tf-postdetail__author-info">
-            <p className="tf-postcard__nickname">{post.authorNickname}</p>
+            <p className="tf-postcard__nickname">{nicknameOf(post.authorId, post.authorNickname)}</p>
             <p className="tf-micro">{fromNow(post.createdAt)} · 조회 {post.viewCount}</p>
           </div>
           {isAuthor && (
@@ -165,10 +172,16 @@ export function PostDetailModal({
             <ul className="tf-commentlist">
               {comments.map((comment) => (
                 <li key={comment.id} className="tf-comment">
-                  <Avatar nickname={comment.authorNickname} color={comment.authorAvatarColor} size={26} />
+                  <Avatar
+                    nickname={nicknameOf(comment.authorId, comment.authorNickname)}
+                    color={avatarColorOf(comment.authorId, comment.authorAvatarColor)}
+                    size={26}
+                  />
                   <div className="tf-comment__body">
                     <p className="tf-comment__meta">
-                      <span className="tf-comment__nickname">{comment.authorNickname}</span>
+                      <span className="tf-comment__nickname">
+                        {nicknameOf(comment.authorId, comment.authorNickname)}
+                      </span>
                       <span className="tf-micro">{fromNow(comment.createdAt)}</span>
                     </p>
                     <p className="tf-comment__content">{comment.content}</p>
