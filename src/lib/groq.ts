@@ -1,9 +1,10 @@
 /**
- * Groq API 래퍼 (OpenAI 호환 REST — SDK 없이 fetch만 사용).
+ * AI 기능 클라이언트.
  *
- * ⚠️ 프로토타입 단계 한정: `VITE_GROQ_API_KEY`는 클라이언트 번들에 그대로 노출된다.
- * 배포 전에는 반드시 Firebase Cloud Functions 같은 서버 프록시로 옮길 것 — 지금은
- * 팀 결정에 따라 임시로 클라이언트에서 직접 호출한다.
+ * Groq를 직접 부르지 않고 Cloudflare Worker 프록시(`VITE_AI_PROXY_URL`)를 거친다.
+ * API 키는 Worker 시크릿에만 있고 이 번들에는 들어가지 않는다 — 모델 선택과
+ * 시스템 프롬프트도 Worker가 들고 있어서, 여기서는 데이터만 보낸다.
+ * 배포 방법은 `worker/README.md` 참고.
  *
  * 두 가지만 제공한다:
  *   - classifyClothingPhoto: 옷 사진 → 카테고리/색상/소재 자동 인식 (vision)
@@ -21,74 +22,46 @@ import {
   type MinorCategory,
 } from '@/types'
 
-const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
-
-/** 실제 서비스에 쓰이는 모델. 문자열 하나만 바꾸면 교체된다. */
-export const GROQ_MODELS = {
-  /** 옷 사진 분류 (vision) — 이미지 입력 미지원일 경우 호출부가 자동 폴백한다 */
-  vision: 'qwen/qwen3.6-27b',
-  /** 코디 추천 문구 생성 (reasoning) */
-  reasoning: 'llama-3.3-70b-versatile',
-} as const
-
-const apiKey = import.meta.env.VITE_GROQ_API_KEY
-export const isGroqConfigured = typeof apiKey === 'string' && apiKey.length > 0
+const proxyUrl = import.meta.env.VITE_AI_PROXY_URL
+export const isGroqConfigured = typeof proxyUrl === 'string' && proxyUrl.length > 0
 
 if (!isGroqConfigured && import.meta.env.DEV) {
-  console.info('[ToFit] VITE_GROQ_API_KEY가 없어 Groq AI 기능 없이 기존 규칙 기반 로직만 사용합니다.')
+  console.info(
+    '[ToFit] VITE_AI_PROXY_URL이 없어 AI 기능 없이 규칙 기반 로직만 사용합니다. ' +
+      '설정 방법은 worker/README.md 참고.',
+  )
 }
-if (isGroqConfigured && import.meta.env.DEV) {
+if (import.meta.env.DEV && import.meta.env.VITE_GROQ_API_KEY) {
   console.warn(
-    '[ToFit] Groq API 키가 클라이언트 번들에 노출되는 방식으로 동작 중입니다. ' +
-      '배포 전 서버 프록시(Firebase Functions 등)로 반드시 교체하세요.',
+    '[ToFit] .env.local에 VITE_GROQ_API_KEY가 남아 있습니다. 이 값은 빌드 산출물에 ' +
+      '그대로 박혀 공개되므로 삭제하세요. 이제 키는 Worker 시크릿에만 둡니다.',
   )
 }
 
-interface ChatContentPart {
-  type: 'text' | 'image_url'
-  text?: string
-  image_url?: { url: string }
-}
+/** 프록시에 보낼 요청 — Worker가 아는 action만 허용된다 */
+type ProxyRequest =
+  | { action: 'classify'; imageDataUrl: string }
+  | { action: 'copy'; context: OutfitCopyContext }
 
-async function callGroqChat(options: {
-  model: string
-  system: string
-  userContent: string | ChatContentPart[]
-  maxTokens?: number
-  /** qwen3.6 같은 reasoning 모델의 <think> 단계를 끈다 — 안 끄면 토큰을 수천 개씩 태우다 답을 못 낸다 */
-  reasoningEffort?: 'none' | 'default'
-}): Promise<string | null> {
+async function callProxy(request: ProxyRequest): Promise<string | null> {
   if (!isGroqConfigured) return null
 
   try {
-    const response = await fetch(GROQ_ENDPOINT, {
+    const response = await fetch(proxyUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: options.model,
-        temperature: 0.3,
-        max_tokens: options.maxTokens ?? 400,
-        response_format: { type: 'json_object' },
-        ...(options.reasoningEffort ? { reasoning_effort: options.reasoningEffort } : {}),
-        messages: [
-          { role: 'system', content: options.system },
-          { role: 'user', content: options.userContent },
-        ],
-      }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
     })
 
     if (!response.ok) {
-      console.warn(`[ToFit] Groq API 오류 (${options.model}): ${response.status}`)
+      console.warn(`[ToFit] AI 프록시 오류 (${request.action}): ${response.status}`)
       return null
     }
 
-    const data = await response.json()
-    return data?.choices?.[0]?.message?.content ?? null
+    const data = (await response.json()) as { content?: string | null }
+    return data?.content ?? null
   } catch (error) {
-    console.warn(`[ToFit] Groq 호출 실패 (${options.model})`, error)
+    console.warn(`[ToFit] AI 프록시 호출 실패 (${request.action})`, error)
     return null
   }
 }
@@ -132,25 +105,7 @@ function pickValid<T extends string>(value: string | undefined, allowed: readonl
 export async function classifyClothingPhoto(
   imageDataUrl: string,
 ): Promise<Partial<ClothingVisionResult> | null> {
-  const raw = await callGroqChat({
-    model: GROQ_MODELS.vision,
-    maxTokens: 300,
-    // qwen3.6-27b는 기본적으로 <think> 추론을 길게 하는 reasoning 모델이라 이걸 안 끄면
-    // 분당 토큰 한도(TPM)를 순식간에 다 써버리고 JSON도 못 낸다. 분류 작업엔 추론이 필요 없다.
-    reasoningEffort: 'none',
-    system:
-      '너는 패션 커머스 앱의 옷 사진 분류기다. 사용자가 올린 옷 사진 한 장을 보고 아래 JSON 스키마로만 답한다. ' +
-      '설명 문장 없이 JSON 객체 하나만 출력한다.\n' +
-      `majorCategory는 다음 중 하나: ${MAJOR_CATEGORIES.join(', ')}\n` +
-      `minorCategory는 다음 중 하나: ${MINOR_CATEGORIES.join(', ')}\n` +
-      `material은 다음 중 하나: ${MATERIALS.join(', ')}\n` +
-      'color는 대표색의 HEX 코드(#rrggbb), colorName은 그 색의 한글 이름(예: "아이보리").\n' +
-      '스키마: {"majorCategory":"...","minorCategory":"...","color":"#xxxxxx","colorName":"...","material":"..."}',
-    userContent: [
-      { type: 'text', text: '이 옷을 분류해줘.' },
-      { type: 'image_url', image_url: { url: imageDataUrl } },
-    ],
-  })
+  const raw = await callProxy({ action: 'classify', imageDataUrl })
 
   const parsed = parseJsonLoose<RawVisionResponse>(raw)
   if (!parsed) return null
@@ -187,26 +142,7 @@ export interface OutfitCopyResult {
 export async function generateOutfitCopy(
   context: OutfitCopyContext,
 ): Promise<OutfitCopyResult | null> {
-  const itemList = context.items
-    .map((item) => `- ${item.categoryLabel}: ${item.brand} ${item.name} (${item.colorName})`)
-    .join('\n')
-
-  const raw = await callGroqChat({
-    model: GROQ_MODELS.reasoning,
-    maxTokens: 350,
-    system:
-      '너는 패션 코디 추천 앱 ToFit의 AI 스타일리스트다. 아래 실제 코디 구성을 근거로만 설명하고, ' +
-      '목록에 없는 아이템이나 브랜드를 절대 지어내지 않는다. 반말은 쓰지 않되 친근한 존댓말(-해요/-예요체)을 쓴다. ' +
-      '반드시 JSON 객체 하나만 출력한다: ' +
-      '{"reason":"2~4문장, 날씨·상황·퍼스널컬러를 근거로 든 추천 이유","mascotComment":"이모지 1개를 포함한 짧은 한 문장, 마스코트가 말하듯 다정하게"}',
-    userContent: [
-      `상황: ${context.situationLabel}`,
-      `날씨: ${context.weatherSummary}`,
-      `사용자: ${context.nickname}님, 퍼스널컬러 ${context.personalColorLabel}`,
-      '코디 구성:',
-      itemList,
-    ].join('\n'),
-  })
+  const raw = await callProxy({ action: 'copy', context })
 
   const parsed = parseJsonLoose<Partial<OutfitCopyResult>>(raw)
   if (!parsed || typeof parsed.reason !== 'string' || typeof parsed.mascotComment !== 'string') {

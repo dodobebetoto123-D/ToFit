@@ -1,0 +1,10 @@
+name = "tofit-ai-proxy"
+main = "src/index.js"
+compatibility_date = "2026-07-26"
+
+# 허용할 출처 목록 (쉼표 구분). 여기 없는 도메인에서 온 요청은 403으로 막는다.
+[vars]
+ALLOWED_ORIGINS = "https://tofit-ebba9.web.app,https://tofit-ebba9.firebaseapp.com,http://localhost:5173"
+
+# GROQ_API_KEY는 여기 적지 않는다 — 시크릿으로 따로 등록한다.
+#   npx wrangler secret put GROQ_API_KEY
