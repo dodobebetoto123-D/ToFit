@@ -21,8 +21,8 @@
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
 
 const MODELS = {
-  vision: 'gemini-3.6-flash',
-  reasoning: 'gemini-3.6-flash',
+  vision: 'gemini-3.1-flash-lite',
+  reasoning: 'gemini-3.1-flash-lite',
 }
 
 /**
@@ -72,9 +72,9 @@ function json(body, status, headers) {
 /**
  * 일시적인 서버 오류(5xx)만 짧게 재시도한다.
  *
- * 429는 재시도하지 않는다. Gemini 무료 등급은 분당 20회 제한이고 "27초 뒤에 다시
- * 오라"고 알려주는데, 그만큼 기다리면 사용자가 화면 앞에서 멈춰 있게 된다. 게다가
- * 짧은 백오프로 다시 찔러봐야 같은 한도에 걸려 남은 할당량만 축낸다.
+ * 429는 재시도하지 않는다. Gemini 무료 등급은 분당 요청 수 제한이 있는데 "30초쯤 뒤에
+ * 다시 오라"고 알려준다. 그만큼 기다리면 사용자가 화면 앞에서 멈춰 있게 되고, 짧은
+ * 백오프로 다시 찔러봐야 같은 한도에 걸려 남은 할당량만 축낸다.
  * 호출부(src/lib/ai.ts)가 규칙 기반 문구로 조용히 폴백하므로 실패해도 화면은 멀쩡하다.
  */
 async function callGeminiWithRetry(model, payload, apiKey, attempts = 2) {
