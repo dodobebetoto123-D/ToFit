@@ -198,6 +198,18 @@
 .tf-segmented {
   display: inline-flex;
   gap: 4px;
+  /* 탭이 많으면(옷장 카테고리·약관 4종 등) 화면 밖으로 밀려 가로 스크롤이 생긴다.
+     넘칠 때는 페이지가 아니라 탭 줄 안에서만 좌우로 넘기게 한다. */
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.tf-segmented::-webkit-scrollbar {
+  display: none;
+}
+.tf-segmented__item {
+  flex: 0 0 auto;
 }
 .tf-segmented--track {
   background: var(--tf-surface-sunken);
@@ -1435,4 +1447,16 @@
 /* 코디 보드 슬롯 — 확대 버튼을 겹쳐 올리기 위한 래퍼 */
 .tf-slot__artwrap {
   position: relative;
+}
+
+/* ── 광고 슬롯 ────────────────────────────────────────────── */
+.tf-adslot {
+  /* 광고가 화면보다 커도 페이지가 가로로 밀리지 않게 자리 안에서 잘라낸다 */
+  max-width: 100%;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+}
+.tf-adslot .kakao_ad_area {
+  max-width: 100%;
 }

@@ -23,6 +23,12 @@
   gap: var(--tf-sp-3);
   flex-wrap: wrap;
 }
+/* flex 자식은 기본 min-width가 auto라 내용보다 작아지지 않는다 — 안의 탭 줄이
+   스스로 스크롤할 수 있도록 줄어들 여지를 준다 */
+.tf-toolbar > *,
+.tf-toolbar__right > * {
+  min-width: 0;
+}
 .tf-toolbar__right {
   display: flex;
   align-items: center;
@@ -208,6 +214,11 @@
   color: var(--tf-ink-500);
   white-space: nowrap;
 }
+/* 위치 재시도 링크가 "서울 · 맑음"에 딱 붙어 한 단어처럼 보이던 문제 */
+.tf-fact__label .tf-textlink {
+  margin-left: 6px;
+  font-size: inherit;
+}
 .tf-hero__cta {
   margin-left: var(--tf-sp-2);
 }
@@ -218,15 +229,35 @@
   gap: var(--tf-sp-6);
   align-items: start;
 }
+/**
+ * grid/flex 자식의 기본 min-width는 auto라 "내용의 최소 너비" 밑으로 줄어들지 않는다.
+ * 안에 안 줄어드는 것(광고 배너, 긴 탭 줄, 표)이 하나라도 있으면 칸 전체가 그만큼
+ * 벌어지고 페이지가 통째로 가로로 밀린다. 실제로 홈·커뮤니티가 이것 때문에 깨졌다.
+ * 레이아웃 그리드 전부에 한 번에 적용해 같은 문제가 다시 안 생기게 한다.
+ */
+.tf-grid > *,
+.tf-home__grid > *,
+.tf-home__col > *,
+.tf-home__pair > *,
+.tf-tpogrid > *,
+.tf-community > *,
+.tf-body-grid > *,
+.tf-compat__row > *,
+.tf-rankgrid > *,
+.tf-colorgrid > * {
+  min-width: 0;
+}
 .tf-home__col {
   display: flex;
   flex-direction: column;
   gap: var(--tf-sp-6);
+  min-width: 0;
 }
 .tf-home__pair {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--tf-sp-6);
+  min-width: 0;
 }
 .tf-home__closet-tabs {
   overflow-x: auto;
