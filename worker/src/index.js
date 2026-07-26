@@ -214,8 +214,15 @@ export default {
 
     const response = await callGroqWithRetry(built.payload, env.GROQ_API_KEY)
     if (!response.ok) {
-      // 상태 코드는 그대로 넘겨 클라이언트가 원인을 로그로 남길 수 있게 한다.
-      return json({ error: `Groq 오류 ${response.status}` }, response.status, cors)
+      // Groq가 알려주는 실패 사유를 그대로 붙여준다 — 상태 코드만으로는 원인을 못 찾는다.
+      // (에러 본문에 API 키가 들어가지는 않는다)
+      const detail = await response.text().catch(() => '')
+      console.log(`Groq ${response.status} (${body.action}): ${detail.slice(0, 500)}`)
+      return json(
+        { error: `Groq 오류 ${response.status}`, detail: detail.slice(0, 500) },
+        response.status,
+        cors,
+      )
     }
 
     const data = await response.json()
