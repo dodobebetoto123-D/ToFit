@@ -3,7 +3,13 @@ import { Button } from '@/components/ui/Button'
 import { Chip } from '@/components/ui/Chip'
 import { Icon } from '@/components/ui/Icon'
 import { classifyClothingPhoto, isGroqConfigured } from '@/lib/groq'
-import { extractDominantColor, fileToVisionDataUrl, NAMED_COLORS, nearestColorName } from '@/lib/image'
+import {
+  extractDominantColor,
+  fileToDisplayDataUrl,
+  fileToVisionDataUrl,
+  NAMED_COLORS,
+  nearestColorName,
+} from '@/lib/image'
 import {
   majorCategoryLabel,
   materialLabel,
@@ -89,13 +95,17 @@ export function AddClothingDialog({ open, userId, onClose, onSubmit }: AddClothi
   }
 
   async function handlePhoto(file: File) {
-    // 압축된 데이터 URL을 실제 사진으로도 저장한다 — 옷장·코디보드에서 일러스트 대신 이 사진을 보여준다.
+    // 저장용은 확대 보기에서 소재·패턴이 보이도록 크게, AI 전송용은 작게 — 두 벌을 따로 만든다.
     let dataUrl: string | undefined
     try {
-      dataUrl = await fileToVisionDataUrl(file)
-      setPhotoUrl(dataUrl)
+      setPhotoUrl(await fileToDisplayDataUrl(file))
     } catch {
       // 압축 실패해도 아래 색상 추출·수동 입력은 그대로 진행한다.
+    }
+    try {
+      dataUrl = await fileToVisionDataUrl(file)
+    } catch {
+      // Vision 전송용을 못 만들면 아래 AI 분석 단계는 건너뛴다.
     }
 
     // 즉시 미리보기용 — 캔버스 기반 평균색은 네트워크 없이 바로 나온다.

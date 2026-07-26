@@ -7,6 +7,7 @@ import { MascotBubble } from '@/components/outfit/MascotBubble'
 import { Button } from '@/components/ui/Button'
 import { Chip } from '@/components/ui/Chip'
 import { Icon } from '@/components/ui/Icon'
+import { ImageViewer } from '@/components/ui/ImageViewer'
 import { SegmentedTabs, type SegmentedOption } from '@/components/ui/SegmentedTabs'
 import { useAppData } from '@/hooks/useAppData'
 import { useAuth } from '@/hooks/useAuth'
@@ -48,6 +49,7 @@ export function ClosetPage() {
   const [preferredOnly, setPreferredOnly] = useState(false)
   const [selected, setSelected] = useState<ClothingItem | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [zoomOpen, setZoomOpen] = useState(false)
 
   // 홈에서 `/closet?add=1` 로 들어오면 바로 등록 창을 연다.
   useEffect(() => {
@@ -177,7 +179,24 @@ export function ClosetPage() {
 
           <div className="tf-detail__art">
             {selected.photoUrl ? (
-              <img src={selected.photoUrl} alt={selected.name} className="tf-detail__photo" />
+              <>
+                <button
+                  type="button"
+                  className="tf-detail__photobtn"
+                  onClick={() => setZoomOpen(true)}
+                  aria-label={`${selected.name} 큰 이미지 보기`}
+                >
+                  <img src={selected.photoUrl} alt={selected.name} className="tf-detail__photo" />
+                </button>
+                <button
+                  type="button"
+                  className="tf-zoombtn"
+                  onClick={() => setZoomOpen(true)}
+                  aria-label="큰 이미지 보기"
+                >
+                  <Icon name="search" size={16} />
+                </button>
+              </>
             ) : (
               <GarmentGlyph category={selected.minorCategory} color={selected.color} />
             )}
@@ -256,6 +275,22 @@ export function ClosetPage() {
           </div>
         </div>
       )}
+
+      <ImageViewer
+        open={zoomOpen && !!selected?.photoUrl}
+        images={
+          selected?.photoUrl
+            ? [
+                {
+                  src: selected.photoUrl,
+                  alt: selected.name,
+                  caption: `${selected.brand} · ${selected.name}`,
+                },
+              ]
+            : []
+        }
+        onClose={() => setZoomOpen(false)}
+      />
 
       <AddClothingDialog
         open={dialogOpen}

@@ -5,8 +5,8 @@
  * 카테고리·브랜드 인식은 서버 Vision API가 붙어야 하므로 아직 사용자 입력을 받는다.
  */
 
-/** Vision AI 업로드용으로 가로/세로를 줄이고 JPEG data URL로 인코딩한다 (요청 크기 절약) */
-export async function fileToVisionDataUrl(file: File, maxSize = 512): Promise<string> {
+/** 긴 변을 maxSize로 줄여 JPEG data URL로 인코딩한다 */
+async function resizeToDataUrl(file: File, maxSize: number, quality: number): Promise<string> {
   const bitmap = await createImageBitmap(file)
   const scale = Math.min(1, maxSize / Math.max(bitmap.width, bitmap.height))
   const width = Math.round(bitmap.width * scale)
@@ -21,7 +21,23 @@ export async function fileToVisionDataUrl(file: File, maxSize = 512): Promise<st
   ctx.drawImage(bitmap, 0, 0, width, height)
   bitmap.close()
 
-  return canvas.toDataURL('image/jpeg', 0.85)
+  return canvas.toDataURL('image/jpeg', quality)
+}
+
+/** Vision AI 업로드용 — 요청 크기를 아끼려고 작게 줄인다. 저장하지 않는다. */
+export async function fileToVisionDataUrl(file: File, maxSize = 512): Promise<string> {
+  return resizeToDataUrl(file, maxSize, 0.85)
+}
+
+/**
+ * 화면 표시·확대 보기용으로 저장할 사진.
+ *
+ * 확대했을 때 소재·패턴이 보여야 해서 Vision용(512px)보다 크게 잡는다. 다만 이 문자열이
+ * Firestore 문서 안에 그대로 들어가고 문서 상한이 1MiB라, 1024px·품질 0.82로 타협했다
+ * (보통 base64 기준 150~300KB).
+ */
+export async function fileToDisplayDataUrl(file: File, maxSize = 1024): Promise<string> {
+  return resizeToDataUrl(file, maxSize, 0.82)
 }
 
 /** 이미지 가장자리를 제외한 중앙 영역의 평균색을 구한다 (배경 영향 최소화) */

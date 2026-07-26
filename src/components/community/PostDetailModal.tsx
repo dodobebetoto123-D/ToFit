@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
+import { ImageViewer } from '@/components/ui/ImageViewer'
 import { useProfileDirectory } from '@/hooks/useProfileDirectory'
 import { majorCategoryLabel, minorCategoryLabel } from '@/lib/labels'
 import { fromNow } from '@/lib/utils'
@@ -39,6 +40,7 @@ export function PostDetailModal({
   const [comments, setComments] = useState<PostComment[]>([])
   const [commentText, setCommentText] = useState('')
   const [posting, setPosting] = useState(false)
+  const [zoomOpen, setZoomOpen] = useState(false)
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -106,7 +108,24 @@ export function PostDetailModal({
       <div className="tf-dialog__body">
         <div className="tf-postdetail__media">
           {post.photoUrl ? (
-            <img src={post.photoUrl} alt={post.title} className="tf-postdetail__photo" />
+            <>
+              <button
+                type="button"
+                className="tf-postdetail__photobtn"
+                onClick={() => setZoomOpen(true)}
+                aria-label={`${post.title} 큰 이미지 보기`}
+              >
+                <img src={post.photoUrl} alt={post.title} className="tf-postdetail__photo" />
+              </button>
+              <button
+                type="button"
+                className="tf-zoombtn"
+                onClick={() => setZoomOpen(true)}
+                aria-label="큰 이미지 보기"
+              >
+                <Icon name="search" size={16} />
+              </button>
+            </>
           ) : (
             <PostPhoto theme={post.outfitPhotoTheme} />
           )}
@@ -219,6 +238,12 @@ export function PostDetailModal({
           )}
         </div>
       </div>
+
+      <ImageViewer
+        open={zoomOpen && !!post.photoUrl}
+        images={post.photoUrl ? [{ src: post.photoUrl, alt: post.title, caption: post.title }] : []}
+        onClose={() => setZoomOpen(false)}
+      />
     </dialog>
   )
 }
