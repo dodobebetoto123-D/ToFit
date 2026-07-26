@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { latLonToGrid } from '@/lib/kmaGrid'
 import { fetchKmaWeather } from '@/services/kmaWeather'
 import type { WeatherSnapshot } from '@/types'
@@ -26,18 +26,54 @@ function seasonalEstimate(): WeatherSnapshot {
   }
 }
 
-function getPosition(): Promise<GeolocationPosition | null> {
+/** 위치를 못 받은 이유 — 화면에 뭘 안내할지 결정한다 */
+export type LocationIssue =
+  | null
+  /** 브라우저·OS 설정에서 이미 거부된 상태. 다시 물어봐도 프롬프트가 안 뜬다. */
+  | 'DENIED'
+  /** 신호를 못 잡았거나 시간 초과 — 다시 시도하면 될 수도 있다. */
+  | 'UNAVAILABLE'
+  /** 이 브라우저가 위치를 지원하지 않음 */
+  | 'UNSUPPORTED'
+
+interface PositionResult {
+  position: GeolocationPosition | null
+  issue: LocationIssue
+}
+
+/**
+ * 위치를 요청하고 **실패 사유까지** 돌려준다.
+ * 예전에는 오류를 그냥 버려서, 권한이 거부된 상태로 재시도 버튼을 눌러도 화면에
+ * 아무 변화가 없어 "버튼이 안 먹는다"처럼 보였다.
+ */
+function getPosition(): Promise<PositionResult> {
   return new Promise((resolve) => {
     if (!navigator.geolocation) {
-      resolve(null)
+      resolve({ position: null, issue: 'UNSUPPORTED' })
       return
     }
     navigator.geolocation.getCurrentPosition(
-      (pos) => resolve(pos),
-      () => resolve(null),
-      { timeout: 8000, maximumAge: 10 * 60 * 1000 },
+      (position) => resolve({ position, issue: null }),
+      (error) =>
+        resolve({
+          position: null,
+          issue: error.code === error.PERMISSION_DENIED ? 'DENIED' : 'UNAVAILABLE',
+        }),
+      // 재시도할 때는 캐시된 위치를 쓰지 않는다 — 안 그러면 눌러도 같은 값이 돌아온다.
+      { timeout: 8000, maximumAge: 0 },
     )
   })
+}
+
+/** 권한 상태를 미리 확인한다 (지원하지 않는 브라우저면 null) */
+async function readPermission(): Promise<PermissionState | null> {
+  if (!navigator.permissions?.query) return null
+  try {
+    const status = await navigator.permissions.query({ name: 'geolocation' as PermissionName })
+    return status.state
+  } catch {
+    return null
+  }
 }
 
 export interface UseWeatherResult {
@@ -45,8 +81,12 @@ export interface UseWeatherResult {
   loading: boolean
   /** 실시간 조회 실패로 계절 평균 추정치를 보여주는 중인지 */
   isEstimate: boolean
-  /** 위치 권한을 못 받아 서울 기준으로 보여주고 있는지 — true면 재시도 버튼을 보여줄 수 있다 */
+  /** 위치 권한을 못 받아 서울 기준으로 보여주고 있는지 */
   locationDenied: boolean
+  /** 위치를 못 받은 구체적인 사유 — 안내 문구를 고르는 데 쓴다 */
+  locationIssue: LocationIssue
+  /** 브라우저 설정에서 이미 차단돼 버튼만으로는 해결이 안 되는 상태인지 */
+  locationBlocked: boolean
   /** 위치 권한을 다시 요청하고 날씨를 새로 불러온다 */
   retryLocation: () => void
 }
@@ -55,7 +95,8 @@ export function useWeather(): UseWeatherResult {
   const [weather, setWeather] = useState<WeatherSnapshot>(seasonalEstimate)
   const [loading, setLoading] = useState(true)
   const [isEstimate, setIsEstimate] = useState(true)
-  const [locationDenied, setLocationDenied] = useState(false)
+  const [locationIssue, setLocationIssue] = useState<LocationIssue>(null)
+  const [locationBlocked, setLocationBlocked] = useState(false)
   const [retryCount, setRetryCount] = useState(0)
 
   useEffect(() => {
@@ -63,7 +104,11 @@ export function useWeather(): UseWeatherResult {
 
     async function load() {
       setLoading(true)
-      const position = await getPosition()
+
+      const permission = await readPermission()
+      const { position, issue } = await getPosition()
+      if (cancelled) return
+
       const grid = position
         ? latLonToGrid(position.coords.latitude, position.coords.longitude)
         : FALLBACK_GRID
@@ -72,7 +117,10 @@ export function useWeather(): UseWeatherResult {
       const real = await fetchKmaWeather(grid.nx, grid.ny, locationName)
       if (cancelled) return
 
-      setLocationDenied(!position)
+      setLocationIssue(issue)
+      // 브라우저가 이미 '차단'으로 기억하고 있으면 다시 눌러도 프롬프트가 안 뜬다.
+      setLocationBlocked(permission === 'denied' || issue === 'DENIED')
+
       if (real) {
         setWeather(real)
         setIsEstimate(false)
@@ -89,7 +137,15 @@ export function useWeather(): UseWeatherResult {
     }
   }, [retryCount])
 
-  const retryLocation = () => setRetryCount((count) => count + 1)
+  const retryLocation = useCallback(() => setRetryCount((count) => count + 1), [])
 
-  return { weather, loading, isEstimate, locationDenied, retryLocation }
+  return {
+    weather,
+    loading,
+    isEstimate,
+    locationDenied: locationIssue !== null,
+    locationIssue,
+    locationBlocked,
+    retryLocation,
+  }
 }

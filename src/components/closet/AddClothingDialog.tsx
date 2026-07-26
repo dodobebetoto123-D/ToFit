@@ -159,12 +159,16 @@ export function AddClothingDialog({ open, userId, onClose, onSubmit }: AddClothi
       isPreferred: false,
     })
 
-    // 다음 등록을 위해 초기화
+    // 다음 등록을 위해 초기화 — 앞 옷의 스타일·소재가 남아 다음 옷에 잘못 붙지 않게
+    // 사진에서 유추되는 값들까지 함께 되돌린다.
     setName('')
     setBrand('')
     setPrice('')
     setPhotoUrl(undefined)
     setPhotoHint(null)
+    setStyle('CASUAL')
+    setMaterial('COTTON')
+    setSeasons(['SPRING', 'AUTUMN'])
     onClose()
   }
 
@@ -299,9 +303,27 @@ export function AddClothingDialog({ open, userId, onClose, onSubmit }: AddClothi
           </label>
         </div>
 
+        {/* 스타일은 추천 결과를 크게 좌우하는데, 예전에는 아래 "선택 입력" 안에 접혀 있어
+            대부분 못 보고 지나쳐 모든 옷이 캐주얼로 저장됐다. 기본 폼으로 올린다. */}
+        <fieldset className="tf-field">
+          <legend>스타일</legend>
+          <div className="tf-chipset tf-chipset--wrap">
+            {STYLE_TAGS.map((value) => (
+              <Chip
+                key={value}
+                size="sm"
+                selected={style === value}
+                onClick={() => setStyle(value)}
+              >
+                {styleTagLabel[value]}
+              </Chip>
+            ))}
+          </div>
+        </fieldset>
+
         {/* 선택 입력 */}
         <details className="tf-details">
-          <summary>선택 입력 (소재 · 두께 · 계절 · 스타일 · 가격)</summary>
+          <summary>선택 입력 (소재 · 두께 · 계절 · 가격)</summary>
 
           <fieldset className="tf-field">
             <legend>소재</legend>
@@ -346,22 +368,6 @@ export function AddClothingDialog({ open, userId, onClose, onSubmit }: AddClothi
                   onClick={() => toggleSeason(value)}
                 >
                   {seasonLabel[value]}
-                </Chip>
-              ))}
-            </div>
-          </fieldset>
-
-          <fieldset className="tf-field">
-            <legend>스타일</legend>
-            <div className="tf-chipset">
-              {STYLE_TAGS.map((value) => (
-                <Chip
-                  key={value}
-                  size="sm"
-                  selected={style === value}
-                  onClick={() => setStyle(value)}
-                >
-                  {styleTagLabel[value]}
                 </Chip>
               ))}
             </div>

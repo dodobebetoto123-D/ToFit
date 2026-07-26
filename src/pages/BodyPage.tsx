@@ -6,6 +6,7 @@ import { Chip } from '@/components/ui/Chip'
 import { Icon } from '@/components/ui/Icon'
 import { useAppData } from '@/hooks/useAppData'
 import { useAuth } from '@/hooks/useAuth'
+import { HEIGHT_RANGE, WEIGHT_RANGE, validateBodyMetrics } from '@/lib/bodyMetrics'
 import {
   bodyShapeLabel,
   bodyShapeSummary,
@@ -74,7 +75,11 @@ export function BodyPage() {
 
   const tips = BODY_TIPS[user.bodyShape]
 
+  // 범위를 벗어난 수치가 저장되면 체형 적합도·추천 점수가 통째로 어긋난다.
+  const metricsError = validateBodyMetrics(height, weight)
+
   function save() {
+    if (metricsError) return
     void updateProfile({ height, weight, bodyShape, personalColor, colorPalette: personalColorPalette[personalColor] })
     setEditing(false)
   }
@@ -91,7 +96,11 @@ export function BodyPage() {
           <h1 className="tf-display">체형 맞춤</h1>
           <p className="tf-caption">체형과 퍼스널 컬러를 알수록 추천이 정확해져요</p>
         </div>
-        <Button variant={editing ? 'primary' : 'secondary'} onClick={() => (editing ? save() : setEditing(true))}>
+        <Button
+          variant={editing ? 'primary' : 'secondary'}
+          disabled={editing && metricsError !== null}
+          onClick={() => (editing ? save() : setEditing(true))}
+        >
           {editing ? '저장하기' : '내 정보 수정'}
         </Button>
       </header>
@@ -105,6 +114,8 @@ export function BodyPage() {
                 <input
                   className="tf-input"
                   type="number"
+                  min={HEIGHT_RANGE.min}
+                  max={HEIGHT_RANGE.max}
                   value={height}
                   onChange={(event) => setHeight(Number(event.target.value))}
                 />
@@ -114,10 +125,17 @@ export function BodyPage() {
                 <input
                   className="tf-input"
                   type="number"
+                  min={WEIGHT_RANGE.min}
+                  max={WEIGHT_RANGE.max}
                   value={weight}
                   onChange={(event) => setWeight(Number(event.target.value))}
                 />
               </label>
+              {metricsError && (
+                <p className="tf-error" role="alert">
+                  {metricsError}
+                </p>
+              )}
               <fieldset className="tf-field">
                 <legend>골격형</legend>
                 <div className="tf-chipset">

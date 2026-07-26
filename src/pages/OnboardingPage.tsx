@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button'
 import { Chip } from '@/components/ui/Chip'
 import { Icon } from '@/components/ui/Icon'
 import { useAuth } from '@/hooks/useAuth'
+import { HEIGHT_RANGE, WEIGHT_RANGE, validateBodyMetrics } from '@/lib/bodyMetrics'
 import {
   bodyShapeLabel,
   bodyShapeSummary,
@@ -46,7 +47,16 @@ export function OnboardingPage() {
   )
   const [styles, setStyles] = useState<StyleTag[]>(user?.preferredStyles ?? [])
 
+  // 1단계(기본 정보)에서 범위를 벗어나면 다음으로 못 넘어간다.
+  const metricsError = step === 0 ? validateBodyMetrics(height, weight) : null
+
   function finish() {
+    // "나중에 할래요"로도 들어오므로 여기서 한 번 더 막는다 — 말도 안 되는 수치가
+    // 저장되면 체형 적합도·추천 점수가 통째로 어긋난다.
+    if (validateBodyMetrics(height, weight)) {
+      setStep(0)
+      return
+    }
     // updateProfile을 두 번 나눠 부르면 두 번째 호출이 첫 번째 호출 이전의 user를 스프레드해
     // 방금 저장한 필드를 덮어쓴다 — 한 번의 patch로 합쳐서 호출한다.
     void updateProfile({
@@ -101,6 +111,8 @@ export function OnboardingPage() {
                   <input
                     className="tf-input"
                     type="number"
+                    min={HEIGHT_RANGE.min}
+                    max={HEIGHT_RANGE.max}
                     value={height}
                     onChange={(event) => setHeight(Number(event.target.value))}
                   />
@@ -110,11 +122,18 @@ export function OnboardingPage() {
                   <input
                     className="tf-input"
                     type="number"
+                    min={WEIGHT_RANGE.min}
+                    max={WEIGHT_RANGE.max}
                     value={weight}
                     onChange={(event) => setWeight(Number(event.target.value))}
                   />
                 </label>
               </div>
+              {metricsError && (
+                <p className="tf-error" role="alert">
+                  {metricsError}
+                </p>
+              )}
             </>
           )}
 
@@ -198,6 +217,7 @@ export function OnboardingPage() {
           {step < STEPS.length - 1 ? (
             <Button
               onClick={() => setStep((value) => value + 1)}
+              disabled={metricsError !== null}
               trailing={<Icon name="chevron-right" size={16} />}
             >
               다음

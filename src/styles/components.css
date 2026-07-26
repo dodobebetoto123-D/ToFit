@@ -1460,3 +1460,18 @@
 .tf-adslot .kakao_ad_area {
   max-width: 100%;
 }
+
+/* ── 위치 안내 ────────────────────────────────────────────── */
+.tf-locnotice {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: var(--tf-fs-micro);
+  color: var(--tf-ink-500);
+}
+.tf-locnotice__help {
+  flex-basis: 100%;
+  color: var(--tf-ink-700);
+  line-height: 1.5;
+}

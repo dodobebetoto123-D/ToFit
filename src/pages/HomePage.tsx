@@ -5,6 +5,7 @@ import { ClothingCard } from '@/components/closet/ClothingCard'
 import { PostCard } from '@/components/community/PostCard'
 import { MascotBubble } from '@/components/outfit/MascotBubble'
 import { OutfitBoard } from '@/components/outfit/OutfitBoard'
+import { LocationNotice } from '@/components/weather/LocationNotice'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Chip } from '@/components/ui/Chip'
@@ -53,7 +54,8 @@ export function HomePage() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { closet, posts, toggleLike, saveOutfit, isSaved, togglePreferred } = useAppData()
-  const { weather, isEstimate: weatherIsEstimate, locationDenied, retryLocation } = useWeather()
+  const { weather, isEstimate: weatherIsEstimate, locationIssue, locationBlocked, retryLocation } =
+    useWeather()
 
   const [situation, setSituation] = useState<Situation>('OFFICE')
   const [closetOnly, setClosetOnly] = useState(false)
@@ -119,12 +121,12 @@ export function HomePage() {
             <span className="tf-fact__label">
               {weather.locationName} · {weather.status}
               {weatherIsEstimate && ' (추정)'}
-              {locationDenied && (
-                <button type="button" className="tf-textlink" onClick={retryLocation}>
-                  내 지역으로 보기
-                </button>
-              )}
             </span>
+            <LocationNotice
+              issue={locationIssue}
+              blocked={locationBlocked}
+              onRetry={retryLocation}
+            />
           </div>
 
           <Button

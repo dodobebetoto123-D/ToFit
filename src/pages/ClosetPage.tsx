@@ -20,7 +20,7 @@ import {
   thicknessLabel,
 } from '@/lib/labels'
 import { formatPrice, fromNow } from '@/lib/utils'
-import { MAJOR_CATEGORIES, type ClothingItem, type MajorCategory } from '@/types'
+import { MAJOR_CATEGORIES, type MajorCategory } from '@/types'
 
 type Filter = MajorCategory | 'ALL'
 type SortKey = 'RECENT' | 'WORN' | 'NAME'
@@ -47,9 +47,18 @@ export function ClosetPage() {
   const [filter, setFilter] = useState<Filter>('ALL')
   const [sort, setSort] = useState<SortKey>('RECENT')
   const [preferredOnly, setPreferredOnly] = useState(false)
-  const [selected, setSelected] = useState<ClothingItem | null>(null)
+  /**
+   * 선택된 아이템은 **id만** 들고 있는다. 예전에는 아이템 객체를 통째로 복사해 뒀는데,
+   * 그러면 Firestore 스냅샷이 갱신돼도 패널 안의 값이 그대로라 실제 값과 어긋났다.
+   * (그리드 하트로 "자주 입는 옷"을 바꾸면 패널 라벨은 옛 값을 그린 채로 남아,
+   * 그 상태로 누르면 반대로 동작하는 것처럼 보였다.)
+   */
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [zoomOpen, setZoomOpen] = useState(false)
+
+  // 항상 최신 스냅샷에서 다시 찾는다. 삭제된 아이템이면 자연스럽게 패널이 닫힌다.
+  const selected = selectedId ? (closet.find((item) => item.id === selectedId) ?? null) : null
 
   // 홈에서 `/closet?add=1` 로 들어오면 바로 등록 창을 연다.
   useEffect(() => {
@@ -65,8 +74,7 @@ export function ClosetPage() {
   useEffect(() => {
     const itemId = searchParams.get('item')
     if (!itemId || closetLoading) return
-    const item = closet.find((i) => i.id === itemId)
-    if (item) setSelected(item)
+    if (closet.some((i) => i.id === itemId)) setSelectedId(itemId)
     searchParams.delete('item')
     setSearchParams(searchParams, { replace: true })
   }, [searchParams, setSearchParams, closet, closetLoading])
@@ -159,7 +167,7 @@ export function ClosetPage() {
               key={item.id}
               item={item}
               onTogglePreferred={togglePreferred}
-              onSelect={setSelected}
+              onSelect={(item) => setSelectedId(item.id)}
             />
           ))}
         </div>
@@ -171,7 +179,7 @@ export function ClosetPage() {
           <button
             type="button"
             className="tf-icon-btn tf-detail__close"
-            onClick={() => setSelected(null)}
+            onClick={() => setSelectedId(null)}
             aria-label="닫기"
           >
             <Icon name="close" size={19} />
@@ -255,10 +263,9 @@ export function ClosetPage() {
                 leading={
                   <Icon name={selected.isPreferred ? 'heart-filled' : 'heart'} size={16} />
                 }
-                onClick={() => {
-                  togglePreferred(selected.id)
-                  setSelected({ ...selected, isPreferred: !selected.isPreferred })
-                }}
+                // 낙관적 갱신을 하지 않는다 — 화면은 closet 스냅샷에서 파생되므로
+                // 저장이 반영되면 라벨이 알아서 따라온다.
+                onClick={() => togglePreferred(selected.id)}
               >
                 {selected.isPreferred ? '자주 입는 옷 해제' : '자주 입는 옷'}
               </Button>
@@ -266,7 +273,7 @@ export function ClosetPage() {
                 variant="ghost"
                 onClick={() => {
                   removeClothingItem(selected.id)
-                  setSelected(null)
+                  setSelectedId(null)
                 }}
               >
                 옷장에서 삭제

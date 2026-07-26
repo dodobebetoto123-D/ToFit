@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { MascotBubble } from '@/components/outfit/MascotBubble'
 import { OutfitBoard } from '@/components/outfit/OutfitBoard'
+import { LocationNotice } from '@/components/weather/LocationNotice'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Chip } from '@/components/ui/Chip'
@@ -33,7 +34,8 @@ import {
 export function RecommendPage() {
   const { user } = useAuth()
   const { closet, saveOutfit, isSaved, wearCoordinateNow, addFeedback } = useAppData()
-  const { weather, isEstimate: weatherIsEstimate, locationDenied, retryLocation } = useWeather()
+  const { weather, isEstimate: weatherIsEstimate, locationIssue, locationBlocked, retryLocation } =
+    useWeather()
 
   const [situation, setSituation] = useState<Situation>('DAILY')
   const [closetOnly, setClosetOnly] = useState(false)
@@ -112,11 +114,11 @@ export function RecommendPage() {
             {weather.temperatureHigh}℃ / 최저 {weather.temperatureLow}℃)
             {weatherIsEstimate && ' — 실시간 조회가 안 돼 추정치를 보여드려요'}
           </p>
-          {locationDenied && (
-            <button type="button" className="tf-textlink" onClick={retryLocation}>
-              위치 허용하고 내 지역 날씨로 보기
-            </button>
-          )}
+          <LocationNotice
+            issue={locationIssue}
+            blocked={locationBlocked}
+            onRetry={retryLocation}
+          />
         </div>
       </header>
 
