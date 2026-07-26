@@ -139,6 +139,28 @@ export interface OutfitCopyResult {
   mascotComment: string
 }
 
+/**
+ * 모델이 흔히 지어내는 색 이름들.
+ * 실제 코디에 없는 색을 문구가 언급하면 사용자에게 틀린 정보가 나가므로, 그런 문구는
+ * 통째로 버리고 규칙 기반 문구로 폴백한다 (부정확한 AI 문구보다 낫다).
+ */
+const COLOR_WORDS = [
+  '흰색', '하얀', '화이트', '검정', '검은', '블랙', '회색', '그레이', '남색', '네이비',
+  '파란', '파랑', '블루', '하늘색', '빨간', '빨강', '레드', '분홍', '핑크', '베이지',
+  '갈색', '브라운', '카키', '초록', '그린', '노란', '옐로우', '주황', '오렌지', '보라',
+  '퍼플', '아이보리', '크림', '카멜', '차콜', '라벤더', '데님',
+]
+
+/** 코디에 실제로 쓰인 색 이름으로 설명되는 색 단어인지 */
+function isColorGrounded(word: string, actualColorNames: string[]): boolean {
+  return actualColorNames.some((name) => name.includes(word))
+}
+
+/** 실제 코디에 없는 색을 언급하면 true — 그런 문구는 쓰지 않는다 */
+function mentionsUnknownColor(text: string, actualColorNames: string[]): boolean {
+  return COLOR_WORDS.some((word) => text.includes(word) && !isColorGrounded(word, actualColorNames))
+}
+
 export async function generateOutfitCopy(
   context: OutfitCopyContext,
 ): Promise<OutfitCopyResult | null> {
@@ -149,5 +171,27 @@ export async function generateOutfitCopy(
     return null
   }
 
-  return { reason: parsed.reason, mascotComment: parsed.mascotComment }
+  const reason = parsed.reason.trim()
+  const mascotComment = parsed.mascotComment.trim()
+  const combined = `${reason} ${mascotComment}`
+
+  // 값을 못 채우고 자리표시자를 그대로 내보내는 경우가 있다 ("퍼스널컬러인 ??에 어울리는 ??색").
+  if (reason.length < 10 || /\?\?|\{\{|___/.test(combined)) {
+    console.warn('[ToFit] AI 문구가 비었거나 자리표시자가 남아 사용하지 않습니다.')
+    return null
+  }
+
+  // 정보가 부족하다며 되묻는 답변도 그대로 보여주면 안 된다.
+  if (/정보가 (부족|충분하지)|알려주시면|어렵습니다|어려워요/.test(reason)) {
+    console.warn('[ToFit] AI가 문구 대신 되묻는 답을 보내 사용하지 않습니다.')
+    return null
+  }
+
+  const actualColorNames = context.items.map((item) => item.colorName)
+  if (mentionsUnknownColor(combined, actualColorNames)) {
+    console.warn('[ToFit] AI 문구가 실제 코디에 없는 색을 언급해 사용하지 않습니다.')
+    return null
+  }
+
+  return { reason, mascotComment }
 }

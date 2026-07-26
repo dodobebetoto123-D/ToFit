@@ -17,7 +17,7 @@ const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
 
 const MODELS = {
   vision: 'qwen/qwen3.6-27b',
-  reasoning: 'llama-3.3-70b-versatile',
+  reasoning: 'qwen/qwen3.6-27b',
 }
 
 /**
@@ -154,15 +154,26 @@ function buildCopyPayload(body) {
   return {
     payload: {
       model: MODELS.reasoning,
-      temperature: 0.3,
+      temperature: 0.2,
       max_tokens: 350,
+      // 'low' 이상을 주면 <think>에 토큰을 다 써서 응답이 잘리거나 빈 문구가 나온다.
+      // 무료 등급에서 쓸 수 있는 모델(llama-3.3-70b / gpt-oss-120b / qwen3.6-27b)을 모두
+      // 비교했을 때 이 조합이 그나마 가장 정확했다. 그래도 틀릴 때가 있어 클라이언트에서
+      // 검증 후 규칙 기반 문구로 폴백한다 (src/lib/groq.ts).
+      reasoning_effort: 'none',
       response_format: { type: 'json_object' },
       messages: [
         {
           role: 'system',
           content:
-            '너는 패션 코디 추천 앱 ToFit의 AI 스타일리스트다. 아래 실제 코디 구성을 근거로만 설명하고, ' +
-            '목록에 없는 아이템이나 브랜드를 절대 지어내지 않는다. 반말은 쓰지 않되 친근한 존댓말(-해요/-예요체)을 쓴다. ' +
+            '너는 패션 코디 추천 앱 ToFit의 AI 스타일리스트다. 친근한 존댓말(-해요/-예요체)을 쓴다.\n' +
+            '아래 규칙을 반드시 지킨다.\n' +
+            '1. 색상은 입력에 적힌 색 이름을 글자 그대로만 쓴다. "아이보리"를 "흰색"으로, ' +
+            '"그레이"를 "베이지"로 바꿔 부르지 않는다.\n' +
+            '2. 목록에 없는 아이템·브랜드·색을 추가하지 않는다.\n' +
+            '3. 퍼스널컬러는 입력에 적힌 이름을 그대로 쓴다. "여름 쿨"을 "봄"으로 바꾸지 않는다.\n' +
+            '4. 강수확률은 습도가 아니다. 헷갈리지 말고 입력 그대로 해석한다.\n' +
+            '5. 확신이 없으면 그 부분은 언급하지 않는다. 지어내는 것보다 짧은 편이 낫다.\n' +
             '반드시 JSON 객체 하나만 출력한다: ' +
             '{"reason":"2~4문장, 날씨·상황·퍼스널컬러를 근거로 든 추천 이유","mascotComment":"이모지 1개를 포함한 짧은 한 문장, 마스코트가 말하듯 다정하게"}',
         },

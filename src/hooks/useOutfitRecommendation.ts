@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { generateOutfitCopy, isGroqConfigured } from '@/lib/groq'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { generateOutfitCopy, isGroqConfigured, type OutfitCopyResult } from '@/lib/groq'
 import { majorCategoryLabel, personalColorLabel, situationLabel } from '@/lib/labels'
 import { recommendCoordinates, type RecommendResult } from '@/services/recommend'
 import type { ClothingItem, Situation, UserProfile, WeatherSnapshot } from '@/types'
@@ -54,33 +54,67 @@ export function useOutfitRecommendation(input: UseOutfitRecommendationInput) {
   } | null>(null)
   const [aiEnhancing, setAiEnhancing] = useState(false)
 
-  useEffect(() => {
-    if (!base || !profile || !isGroqConfigured) return
+  /**
+   * 코디 id는 상황·체감온도·아이템 구성을 모두 담은 결정적 문자열이라 캐시 키로 그대로 쓴다.
+   * 한 번 받은 문구는 다시 부르지 않는다 — TPO 탭을 오가도 재호출이 없다.
+   */
+  const copyCache = useRef(new Map<string, OutfitCopyResult>())
+  /** 같은 코디에 대해 요청이 겹치지 않게 막는다 (StrictMode의 이중 실행 포함) */
+  const inFlight = useRef(new Set<string>())
 
+  // 문구 생성에 필요한 최신 값들 — 이걸 effect 의존성에 넣으면 내용이 같아도
+  // 객체 참조가 바뀔 때마다 재호출되므로 ref로 들고만 있는다.
+  const contextRef = useRef({ profile, situation, weather })
+  contextRef.current = { profile, situation, weather }
+
+  const coordinateId = base?.coordinate.id ?? null
+
+  useEffect(() => {
+    if (!coordinateId || !isGroqConfigured) return
+
+    const cached = copyCache.current.get(coordinateId)
+    if (cached) {
+      setAiCopy({ coordinateId, ...cached })
+      return
+    }
+    if (inFlight.current.has(coordinateId)) return
+
+    const { profile: p, situation: s, weather: w } = contextRef.current
+    if (!p) return
+
+    const slots = base?.coordinate.slots ?? []
     let cancelled = false
+    inFlight.current.add(coordinateId)
     setAiEnhancing(true)
 
     generateOutfitCopy({
-      situationLabel: situationLabel[situation],
-      weatherSummary: `체감 ${weather.feelsLike}℃, ${weather.status}, 강수확률 ${weather.precipitationChance}%`,
-      personalColorLabel: personalColorLabel[profile.personalColor],
-      nickname: profile.nickname,
-      items: base.coordinate.slots.map((slot) => ({
+      situationLabel: situationLabel[s],
+      weatherSummary: `체감 ${w.feelsLike}℃, ${w.status}, 강수확률 ${w.precipitationChance}%`,
+      personalColorLabel: personalColorLabel[p.personalColor],
+      nickname: p.nickname,
+      items: slots.map((slot) => ({
         name: slot.name,
         brand: slot.brand,
         colorName: slot.colorName,
         categoryLabel: majorCategoryLabel[slot.majorCategory],
       })),
-    }).then((copy) => {
-      if (cancelled) return
-      setAiEnhancing(false)
-      if (copy) setAiCopy({ coordinateId: base.coordinate.id, ...copy })
     })
+      .then((copy) => {
+        if (copy) copyCache.current.set(coordinateId, copy)
+        if (cancelled) return
+        setAiEnhancing(false)
+        if (copy) setAiCopy({ coordinateId, ...copy })
+      })
+      .finally(() => {
+        inFlight.current.delete(coordinateId)
+      })
 
     return () => {
       cancelled = true
     }
-  }, [base, profile, situation, weather])
+    // base는 coordinateId가 같으면 내용도 같다 — 참조 변화로 재호출되지 않게 id만 본다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coordinateId])
 
   const coordinate = useMemo(() => {
     if (!base) return null
